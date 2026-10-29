@@ -1,0 +1,1754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Poshture — Iteration 6 prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,600..700,100&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+/* =====================================================================
+   PAGE SHELL — the artboard around the phone. Adapts to light/dark.
+   ===================================================================== */
+:root{
+  color-scheme:light dark;
+  --page-bg1:#EFE7DC; --page-bg2:#E6E2EE;
+  --panel-bg:rgba(255,255,255,.8); --panel-line:rgba(28,33,64,.08);
+  --panel-ink:#1C2140; --panel-muted:#4B5170;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page-bg1:#14172B; --page-bg2:#1C1A22;
+    --panel-bg:rgba(30,33,56,.85); --panel-line:rgba(255,255,255,.08);
+    --panel-ink:#EEF0F7; --panel-muted:#A6AAC2;
+  }
+}
+:root[data-theme="dark"]{
+  --page-bg1:#14172B; --page-bg2:#1C1A22;
+  --panel-bg:rgba(30,33,56,.85); --panel-line:rgba(255,255,255,.08);
+  --panel-ink:#EEF0F7; --panel-muted:#A6AAC2;
+}
+
+/* =====================================================================
+   APP DESIGN SYSTEM — single source of truth.
+   Complementary scheme (deck 11): Night navy dominates (trust, calm);
+   Sunrise orange is the high-contrast highlight (energy, progress).
+   Category hues are fixed app-wide: Sunrise = check-in, Sprout = move,
+   Sky = learn, Rose = friends. Red is for warnings only.
+   ===================================================================== */
+:root{
+  --paper:#F7F2EB;  --card:#FFFFFF;  --fill:#F0E9DF;  --line:#E9E1D5;
+  --ink:#1C2140;    --ink-2:#4B5170; --ink-3:#62677F;
+  --night:#1C2140;  --night-2:#2B3670;
+  --sun-700:#B4461B; --sun-500:#FF7A3D; --sun-300:#FFB547; --sun-100:#FFEBDC; --sun-50:#FFF5EC;
+  --sprout-700:#17774F; --sprout-500:#2BB07A; --sprout-100:#DCF3E7;
+  --sky-700:#2159B0; --sky-500:#3B82F6; --sky-100:#E1EBFB;
+  --rose-700:#B32E59; --rose-100:#FCE3EB;
+  --alert-600:#C4342E; --alert-100:#FDE5E2;
+  --amber-700:#94570A;
+  --grad-sun:linear-gradient(135deg,#FF6A3D 0%,#FF9446 55%,#FFC24F 100%);
+  --grad-night:linear-gradient(165deg,#1C2140 0%,#25306A 70%,#3A3F86 100%);
+
+  --font-display:"Fraunces",Georgia,serif;
+  --font-ui:"Instrument Sans","Helvetica Neue",sans-serif;
+  --fs-caption:12px; --fs-footnote:13px; --fs-body:15px; --fs-headline:17px;
+  --fs-section:20px; --fs-title:24px; --fs-large:32px; --fs-display:56px;
+
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px; --sp-8:32px; --sp-10:40px;
+  --tap:44px;
+  --r-sm:12px; --r-md:16px; --r-lg:24px; --r-xl:32px; --r-pill:999px;
+  --sh-1:0 1px 2px rgba(28,33,64,.04), 0 6px 18px rgba(80,60,40,.07);
+  --sh-2:0 2px 4px rgba(28,33,64,.05), 0 14px 32px rgba(80,60,40,.10);
+  --sh-3:0 24px 50px rgba(28,33,64,.28);
+  --ease:cubic-bezier(.32,.72,0,1);
+  --dur-push:360ms; --dur-fade:220ms;
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  font-family:var(--font-ui); font-size:var(--fs-body); line-height:1.45; color:var(--panel-ink);
+  background:radial-gradient(1200px 600px at 20% 0%,var(--page-bg1),transparent),linear-gradient(160deg,var(--page-bg1),var(--page-bg2));
+  display:flex; align-items:center; justify-content:center; gap:var(--sp-10);
+  min-height:100%; padding:var(--sp-6); -webkit-font-smoothing:antialiased;
+}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none;text-align:inherit;-webkit-tap-highlight-color:transparent}
+button:disabled{cursor:not-allowed}
+:focus-visible{outline:3px solid var(--sun-700);outline-offset:2px;border-radius:var(--r-sm)}
+.night :focus-visible{outline-color:var(--sun-300)}
+svg{display:block}
+.icn{display:inline-block;flex-shrink:0}
+
+/* ====================== phone hardware ====================== */
+.phone{width:390px;height:min(844px, calc(100vh - 48px));min-height:660px;background:var(--paper);border-radius:54px;position:relative;flex-shrink:0;
+  display:flex;flex-direction:column;overflow:hidden;color:var(--ink);
+  box-shadow:0 0 0 11px #15182B, 0 0 0 12px #3B3F5C, 0 50px 90px rgba(20,22,40,.35)}
+.statusbar{height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px 0 36px;font-size:var(--fs-body);font-weight:600;flex-shrink:0;position:relative;z-index:70;transition:color .2s,background-color .2s}
+.statusbar{background:rgba(247,242,235,.86);-webkit-backdrop-filter:blur(16px) saturate(1.4);backdrop-filter:blur(16px) saturate(1.4)}
+.statusbar.dark{color:#fff;background:transparent;-webkit-backdrop-filter:none;backdrop-filter:none}
+.statusbar.dark.dim{background:rgba(28,33,64,.92);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px)}
+.statusbar .sys{display:flex;align-items:center;gap:6px}
+.island{position:absolute;left:50%;top:11px;transform:translateX(-50%);height:34px;min-width:120px;border-radius:var(--r-pill);background:#000;color:#fff;
+  display:flex;align-items:center;justify-content:center;gap:var(--sp-2);font-size:var(--fs-footnote);font-weight:500;padding:0 var(--sp-4);transition:min-width .35s var(--ease),height .35s var(--ease)}
+.island .live{display:none;align-items:center;gap:var(--sp-2);white-space:nowrap}
+.island.on{min-width:196px;height:38px}
+.island.on .live{display:flex;animation:fadeIn .25s .1s both}
+.statusbar #clock,.statusbar .sys{transition:opacity .2s}
+.statusbar.island-on #clock,.statusbar.island-on .sys{opacity:0}
+.island .dot{width:8px;height:8px;border-radius:50%;background:var(--sun-500);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.35}}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:var(--r-pill);background:var(--ink);opacity:.9;z-index:80;pointer-events:none}
+.phone.darkui .homebar{background:#fff}
+
+.screen{flex:1;position:relative;overflow:hidden;margin-top:-54px}
+.view{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;background:var(--paper);scrollbar-width:none;padding-top:54px}
+.view::-webkit-scrollbar{display:none}
+
+/* navigation motion */
+.enter-push{animation:pushIn var(--dur-push) var(--ease) both;box-shadow:-14px 0 34px rgba(28,33,64,.14);z-index:2}
+.leave-push{animation:pushOut var(--dur-push) var(--ease) both;z-index:1}
+.enter-pop{animation:popIn var(--dur-push) var(--ease) both;z-index:1}
+.leave-pop{animation:popOut var(--dur-push) var(--ease) both;box-shadow:-14px 0 34px rgba(28,33,64,.14);z-index:2}
+.enter-tab{animation:fadeIn var(--dur-fade) ease-out both;z-index:2}
+.leave-tab{animation:fadeOut var(--dur-fade) ease-out both;z-index:1}
+@keyframes pushIn{from{transform:translateX(100%)}to{transform:none}}
+@keyframes pushOut{to{transform:translateX(-28%);filter:brightness(.95)}}
+@keyframes popIn{from{transform:translateX(-28%);filter:brightness(.95)}to{transform:none;filter:none}}
+@keyframes popOut{to{transform:translateX(100%)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{to{opacity:0}}
+.stagger > *{animation:rise .55s var(--ease) both}
+.stagger > *:nth-child(2){animation-delay:70ms} .stagger > *:nth-child(3){animation-delay:140ms}
+.stagger > *:nth-child(4){animation-delay:210ms} .stagger > *:nth-child(5){animation-delay:280ms} .stagger > *:nth-child(n+6){animation-delay:350ms}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* Mini Me is alive: breathes and blinks */
+.mascot.alive .mm-body{transform-box:fill-box;transform-origin:50% 100%;animation:breathe 3.6s ease-in-out infinite}
+.mascot.alive .mm-eyes{transform-box:fill-box;transform-origin:50% 50%;animation:blink 5s infinite}
+.mascot.alive .mm-sprout{transform-box:fill-box;transform-origin:0% 100%;animation:sway 4.2s ease-in-out infinite}
+.mascot .mm-pulse{transform-box:fill-box;transform-origin:center;animation:ping 1.8s ease-out infinite}
+@keyframes breathe{50%{transform:scale(1.015,1.03)}}
+@keyframes blink{0%,46%,50%,100%{transform:none}48%{transform:scaleY(.1)}}
+@keyframes sway{50%{transform:rotate(-5deg)}}
+@keyframes ping{0%{transform:scale(.6);opacity:.5}100%{transform:scale(1.7);opacity:0}}
+@media (prefers-reduced-motion: reduce){ *,*::before,*::after{animation:none !important;transition:none !important} }
+
+/* ====================== tab bar ====================== */
+/* a translucent material that floats over the content, so rows slide under it instead of being sliced off */
+.tabbar{height:88px;background:rgba(252,250,246,.88);backdrop-filter:blur(30px) saturate(1.6);-webkit-backdrop-filter:blur(30px) saturate(1.6);
+  box-shadow:0 -.5px 0 rgba(28,33,64,.12);display:flex;padding:var(--sp-2) var(--sp-2) 28px;position:absolute;left:0;right:0;bottom:0;z-index:30}
+.phone.has-tabs .view::after{content:"";flex:0 0 88px}
+.tabbar[hidden]{display:none}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:var(--tap);font-size:var(--fs-caption);font-weight:600;color:var(--ink-3);border-radius:var(--r-md);transition:color .15s,transform .12s;position:relative}
+.tab.on{color:var(--ink)}
+.tab.on::after{content:"";position:absolute;bottom:-6px;width:5px;height:5px;border-radius:50%;background:var(--sun-500)}
+.tab:active{transform:scale(.9)}
+.fabwrap{flex:1;display:flex;justify-content:center;position:relative}
+.fab{position:absolute;top:-28px;width:64px;height:64px;border-radius:50%;background:var(--grad-sun);color:var(--ink);display:flex;align-items:center;justify-content:center;
+  box-shadow:0 10px 22px rgba(255,106,61,.42), 0 0 0 6px #FCFAF6;transition:transform .12s}
+.fab:active{transform:scale(.9)}
+.fab.on{box-shadow:0 10px 22px rgba(255,106,61,.42), 0 0 0 6px #FCFAF6, 0 0 0 8px var(--sun-100)}
+.fablabel{position:absolute;bottom:0;font-size:var(--fs-caption);font-weight:700;color:var(--sun-700)}
+
+/* ====================== type roles ====================== */
+.display,.title-lg,.title,.num,.serif{font-family:var(--font-display);font-variation-settings:"SOFT" 100;letter-spacing:-.02em}
+.title-lg{font-size:var(--fs-large);font-weight:700;line-height:1.08}
+.title{font-size:var(--fs-title);font-weight:700;line-height:1.15}
+.display{font-size:var(--fs-display);font-weight:700;line-height:.95;letter-spacing:-.04em}
+.num{font-weight:700;font-variant-numeric:tabular-nums}
+.headline{font-size:var(--fs-headline);font-weight:600;line-height:1.3}
+.strong{font-weight:600}
+.body{font-size:var(--fs-body)}
+.sec{color:var(--ink-2)}
+.footnote{font-size:var(--fs-footnote);color:var(--ink-2)}
+.caption{font-size:var(--fs-caption);color:var(--ink-3)}
+.eyebrow{font-size:var(--fs-caption);font-weight:700;color:var(--ink-3);text-transform:uppercase;letter-spacing:.08em}
+.t-sun{color:var(--sun-700)} .t-sprout{color:var(--sprout-700)} .t-sky{color:var(--sky-700)} .t-rose{color:var(--rose-700)}
+.t-flame{color:#FF7A3D;display:inline-flex} .night .t-flame{color:#FF9446}
+.t-gold{color:var(--sun-300);display:inline-flex}
+.t-alert{color:var(--alert-600)} .t-amber{color:var(--amber-700)} .t-ink3{color:var(--ink-3)} .t-white{color:#fff}
+.center{text-align:center} .nowrap{white-space:nowrap}
+
+/* ====================== layout ====================== */
+.pad{padding:var(--sp-2) var(--sp-5) var(--sp-10)}
+/* page scaffold: content grows; the action bar sticks to the bottom, in the thumb zone */
+.view{display:flex;flex-direction:column}
+.view > .pad{flex:1 0 auto}
+.pad:has(+ .ctabar){padding-bottom:var(--sp-2)}
+.ctabar{position:sticky;bottom:0;z-index:5;padding:var(--sp-5) var(--sp-5) 34px;background:linear-gradient(rgba(247,242,235,0),var(--paper) 22px)}
+.phone.has-tabs .ctabar{bottom:88px;padding-bottom:40px}
+.ctabar > .btn + .btn{margin-top:var(--sp-2)}
+.ctabar .links{display:flex;justify-content:center;gap:var(--sp-6);margin-top:var(--sp-1)}
+.gap-1{height:var(--sp-1)} .gap-2{height:var(--sp-2)} .gap-3{height:var(--sp-3)} .gap-4{height:var(--sp-4)} .gap-5{height:var(--sp-5)} .gap-6{height:var(--sp-6)}
+.gap-top{margin-top:var(--sp-2)}
+.row{display:flex;gap:var(--sp-3);align-items:center}
+.row > .btn{flex:1}
+.row.wrap{flex-wrap:wrap;gap:var(--sp-2)}
+.spread{display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3)}
+.grow{flex:1;min-width:0}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)}
+
+.nav{display:flex;align-items:flex-start;gap:var(--sp-3);margin:var(--sp-2) 0 var(--sp-5)}
+.nav .grow{padding-top:2px}
+.nav .sub{margin-top:var(--sp-1)}
+.nav.compact{align-items:center}
+.iconbtn{width:var(--tap);height:var(--tap);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--ink);background:var(--card);box-shadow:var(--sh-1);transition:transform .12s,background-color .12s}
+.iconbtn:active{transform:scale(.9);background:var(--fill)}
+.iconbtn.plain{background:transparent;box-shadow:none;color:var(--ink-2)}
+.iconbtn.plain:active{background:var(--fill)}
+.iconbtn.glass{background:rgba(255,255,255,.14);color:#fff;box-shadow:none}
+.iconbtn.lg{width:56px;height:56px}
+
+.section-h{display:flex;justify-content:space-between;align-items:center;margin:var(--sp-8) var(--sp-1) var(--sp-3)}
+.section-h .serif{font-size:var(--fs-section);font-weight:700}
+
+/* ====================== surfaces ====================== */
+.card{background:var(--card);border-radius:var(--r-lg);padding:var(--sp-5);box-shadow:var(--sh-1)}
+.card.flat{box-shadow:none}
+.card.tight{padding:var(--sp-4)}
+.tint-sun{background:var(--sun-50);box-shadow:none}
+.tint-sprout{background:var(--sprout-100);box-shadow:none}
+.tint-sky{background:var(--sky-100);box-shadow:none}
+.tint-alert{background:var(--alert-100);box-shadow:none}
+.divider{height:1px;background:var(--line);margin:var(--sp-5) calc(-1 * var(--sp-5)) var(--sp-4)}
+.listcap{margin:var(--sp-5) var(--sp-1) var(--sp-2)}
+.listcap:empty{height:var(--sp-3);margin:0}
+.night{background:var(--grad-night);color:#fff;box-shadow:0 18px 40px rgba(28,33,64,.28);position:relative;overflow:hidden}
+.night .footnote,.night .caption,.night .eyebrow{color:rgba(255,255,255,.74)}
+.night::before{content:"";position:absolute;inset:0;background:
+  radial-gradient(1.4px 1.4px at 18% 22%, rgba(255,255,255,.8), transparent),
+  radial-gradient(1.2px 1.2px at 42% 12%, rgba(255,255,255,.6), transparent),
+  radial-gradient(1px 1px at 60% 30%, rgba(255,255,255,.5), transparent),
+  radial-gradient(1.4px 1.4px at 90% 16%, rgba(255,255,255,.7), transparent);pointer-events:none}
+.night > *{position:relative}
+.callout{display:flex;gap:var(--sp-3);align-items:flex-start}
+.callout > .icn, .callout > span:first-child{margin-top:1px}
+
+/* grouped lists */
+.group{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--sh-1);overflow:hidden}
+.group.flat{box-shadow:none;background:transparent;border-radius:0}
+.item{display:flex;align-items:center;gap:var(--sp-3);min-height:68px;padding:var(--sp-3) var(--sp-4);width:100%;position:relative;transition:background-color .12s}
+.item + .item::before{content:"";position:absolute;top:0;left:72px;right:var(--sp-4);height:1px;background:var(--line)}
+.item.noicon + .item.noicon::before{left:var(--sp-4)}
+button.item:active,.item.tap:active{background:var(--fill)}
+.item.is-done .strong{color:var(--ink-2)}
+.item .grow > *{display:block}
+.chev{color:var(--ink-3);display:flex}
+.ico{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--fill);color:var(--ink)}
+.ico.sun{background:var(--sun-100);color:var(--sun-700)}
+.ico.sprout{background:var(--sprout-100);color:var(--sprout-700)}
+.ico.sky{background:var(--sky-100);color:var(--sky-700)}
+.ico.rose{background:var(--rose-100);color:var(--rose-700)}
+.ico.alert{background:var(--alert-100);color:var(--alert-600)}
+.ico.done{background:var(--sprout-500);color:#fff}
+.ico.night{background:var(--night);color:#fff;box-shadow:none}
+.ico.glassy{background:rgba(255,255,255,.14);color:#fff}
+
+/* ====================== controls ====================== */
+.btn{display:flex;align-items:center;justify-content:center;gap:var(--sp-2);width:100%;min-height:56px;padding:0 var(--sp-5);border-radius:var(--r-pill);
+  font-size:var(--fs-headline);font-weight:600;text-align:center;transition:transform .12s,background-color .15s,box-shadow .15s,opacity .15s}
+.btn:active:not(:disabled){transform:scale(.97)}
+.btn.primary{background:var(--night);color:#fff;box-shadow:0 8px 18px rgba(28,33,64,.22)}
+.btn.primary:active:not(:disabled){background:#10132A}
+.btn.sun{background:var(--grad-sun);color:var(--ink);box-shadow:0 10px 22px rgba(255,106,61,.32);font-weight:700}
+.night .btn.sun,.viewport .btn.sun{box-shadow:none}
+.btn.secondary{background:var(--card);color:var(--ink);box-shadow:var(--sh-1)}
+.btn.secondary:active:not(:disabled){background:var(--fill)}
+.btn.quiet{background:var(--fill);color:var(--ink)}
+.btn.ghost{background:transparent;color:var(--ink-2)}
+.btn.danger{background:var(--alert-600);color:#fff;box-shadow:0 8px 18px rgba(196,52,46,.25)}
+.btn.glass{background:rgba(255,255,255,.14);color:#fff}
+.btn.sm{min-height:var(--tap);font-size:var(--fs-body)}
+.btn:disabled{background:var(--fill);color:var(--ink-3);box-shadow:none}
+.btn .spin-sm{width:18px;height:18px;border-radius:50%;border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:rot .8s linear infinite}
+
+.link{display:inline-flex;align-items:center;gap:2px;min-height:var(--tap);padding:0 var(--sp-1);font-size:var(--fs-footnote);font-weight:700;color:var(--sun-700);border-radius:var(--r-sm);transition:opacity .12s}
+.link:active{opacity:.5}
+.link.ink{color:var(--ink)}
+
+.chip{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 var(--sp-3);border-radius:var(--r-pill);background:var(--fill);color:var(--ink-2);font-size:var(--fs-footnote);font-weight:600;white-space:nowrap}
+.chip.sun{background:var(--sun-100);color:var(--sun-700)}
+.chip.sprout{background:var(--sprout-100);color:var(--sprout-700)}
+.chip.sky{background:var(--sky-100);color:var(--sky-700)}
+.chip.alert{background:var(--alert-100);color:var(--alert-600)}
+.chip.glass{background:rgba(255,255,255,.14);color:#fff}
+.chip.solid{background:var(--night);color:#fff}
+
+.pillbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:var(--tap);min-width:84px;padding:0 var(--sp-4);border-radius:var(--r-pill);
+  background:var(--night);color:#fff;font-size:var(--fs-footnote);font-weight:700;transition:transform .12s,background-color .15s;flex-shrink:0}
+.pillbtn:active{transform:scale(.93)}
+.pillbtn.soft{background:var(--fill);color:var(--ink)}
+.pillbtn.on{background:var(--sprout-100);color:var(--sprout-700)}
+.pillbtn.rose{background:var(--rose-100);color:var(--rose-700)}
+.pillbtn.rose.on{background:var(--rose-700);color:#fff}
+
+.seg{display:flex;background:var(--fill);border-radius:var(--r-pill);padding:4px;margin-bottom:var(--sp-5)}
+.seg button{flex:1;min-height:40px;border-radius:var(--r-pill);font-size:var(--fs-footnote);font-weight:600;color:var(--ink-2);text-align:center;transition:background-color .2s,color .2s}
+.seg button[aria-selected="true"]{background:var(--card);color:var(--ink);box-shadow:var(--sh-1)}
+
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin-top:var(--sp-4)}
+.choice button{min-height:96px;border-radius:var(--r-md);background:var(--fill);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-2);
+  font-size:var(--fs-body);font-weight:600;color:var(--ink);transition:transform .12s,background-color .15s,color .15s,box-shadow .15s}
+.choice button:active{transform:scale(.96)}
+.choice button[aria-pressed="true"]{background:var(--night);color:#fff;box-shadow:0 10px 20px rgba(28,33,64,.22)}
+.choice button[aria-pressed="true"] span{color:#fff}
+
+label.lbl{display:block;font-size:var(--fs-footnote);font-weight:600;color:var(--ink-2);margin:var(--sp-4) 0 var(--sp-2) var(--sp-1)}
+.field{width:100%;min-height:56px;padding:0 var(--sp-5);border-radius:var(--r-md);border:1.5px solid transparent;background:var(--card);font:inherit;font-size:var(--fs-body);color:var(--ink);box-shadow:var(--sh-1);transition:border-color .15s}
+.field::placeholder{color:var(--ink-3)}
+.field:focus{outline:none;border-color:var(--sun-500)}
+.field.err{border-color:var(--alert-600)}
+.fielderr{display:flex;align-items:center;gap:6px;margin:var(--sp-2) 0 0 var(--sp-1);font-size:var(--fs-footnote);color:var(--alert-600);font-weight:600}
+.searchwrap{position:relative}
+.searchwrap .icn{position:absolute;left:18px;top:19px;color:var(--ink-3)}
+.searchwrap .field{padding-left:48px}
+
+.steps{display:flex;gap:6px}
+.steps i{flex:1;height:6px;border-radius:var(--r-pill);background:var(--line)}
+.steps i.on{background:var(--grad-sun)}
+.stepcap{margin:var(--sp-2) 0 var(--sp-5)}
+
+/* ====================== feedback chrome ====================== */
+.toast{position:absolute;left:var(--sp-4);right:var(--sp-4);bottom:108px;background:var(--night);color:#fff;border-radius:var(--r-md);min-height:52px;padding:var(--sp-3) var(--sp-4);
+  font-size:var(--fs-footnote);font-weight:600;display:flex;align-items:center;gap:var(--sp-3);opacity:0;transform:translateY(10px) scale(.98);transition:.28s var(--ease);pointer-events:none;z-index:90;box-shadow:var(--sh-3)}
+.toast.show{opacity:1;transform:none;pointer-events:auto}
+.toast.low{bottom:var(--sp-8)}
+.toast.lift{bottom:128px} .toast.lift:not(.low){bottom:212px}
+.toast .ticon{width:28px;height:28px;border-radius:50%;background:var(--grad-sun);color:var(--ink);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.toast .undo{margin-left:auto;color:var(--sun-300);font-weight:700;min-height:var(--tap);padding:0 var(--sp-2)}
+
+.scrim{position:absolute;inset:0;background:rgba(20,22,40,.45);display:none;align-items:flex-end;z-index:95}
+.scrim.show{display:flex;animation:fadeIn .2s both}
+.sheet{background:var(--card);width:100%;border-radius:var(--r-xl) var(--r-xl) 0 0;padding:var(--sp-3) var(--sp-6) var(--sp-10);animation:sheetUp .38s var(--ease) both;max-height:88%;overflow-y:auto}
+@keyframes sheetUp{from{transform:translateY(100%)}to{transform:none}}
+.grab{width:40px;height:5px;border-radius:var(--r-pill);background:var(--line);margin:0 auto var(--sp-5)}
+.sheet .title{margin-bottom:var(--sp-2)}
+.sheet p{color:var(--ink-2);margin-bottom:var(--sp-5)}
+.sheet .btn + .btn{margin-top:var(--sp-2)}
+.sheet .item{padding-left:0;padding-right:0}
+.sheet .item + .item::before{left:56px;right:0}
+.sheet .hero-ico{width:56px;height:56px;border-radius:18px;display:flex;align-items:center;justify-content:center;margin-bottom:var(--sp-4)}
+
+.sysalert{position:absolute;inset:0;background:rgba(0,0,0,.32);display:none;align-items:center;justify-content:center;z-index:100}
+.sysalert.show{display:flex;animation:fadeIn .15s both}
+.sysalert .box{width:270px;border-radius:14px;background:rgba(242,242,247,.97);backdrop-filter:blur(20px);text-align:center;overflow:hidden;animation:alertIn .25s var(--ease) both}
+@keyframes alertIn{from{transform:scale(1.12);opacity:0}to{transform:none;opacity:1}}
+.sysalert .msg{padding:var(--sp-5) var(--sp-4) var(--sp-4);font-family:-apple-system,"SF Pro Text",var(--font-ui)}
+.sysalert .msg b{display:block;font-size:var(--fs-headline);font-weight:600;margin-bottom:var(--sp-1)}
+.sysalert .msg p{font-size:var(--fs-footnote);color:#1C1C1E}
+.sysalert .acts{display:flex;border-top:1px solid rgba(60,60,67,.29)}
+.sysalert .acts button{flex:1;min-height:var(--tap);font-size:var(--fs-headline);color:#0A64D6;text-align:center;font-family:-apple-system,"SF Pro Text",var(--font-ui)}
+.sysalert .acts button + button{border-left:1px solid rgba(60,60,67,.29)}
+.sysalert .acts button.pri{font-weight:600}
+.sysalert .acts button:active{background:rgba(0,0,0,.06)}
+.sysalert .acts button:focus-visible{outline:2px solid #0A64D6;outline-offset:-4px;border-radius:10px}
+.sheet .item:focus-visible,.group .item:focus-visible{outline-offset:-3px}
+
+.notif{position:absolute;top:58px;left:var(--sp-2);right:var(--sp-2);background:rgba(252,250,247,.95);backdrop-filter:blur(20px);border-radius:var(--r-lg);padding:var(--sp-3) var(--sp-4);box-shadow:var(--sh-3);z-index:85;display:none;gap:var(--sp-3);align-items:flex-start}
+.notif.show{display:flex;animation:notifIn .45s var(--ease) both}
+@keyframes notifIn{from{transform:translateY(-130%)}to{transform:none}}
+.appic{width:40px;height:40px;border-radius:10px;background:var(--grad-night);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.notif .acts{display:flex;gap:var(--sp-2);margin-top:var(--sp-2)}
+
+.offline{display:flex;align-items:center;gap:var(--sp-2);background:var(--night);color:#fff;border-radius:var(--r-pill);padding:var(--sp-2) var(--sp-4);font-size:var(--fs-footnote);font-weight:600;margin-bottom:var(--sp-3)}
+
+.skel{background:linear-gradient(90deg,var(--fill) 0%,#FBF8F3 40%,var(--fill) 80%);background-size:300% 100%;animation:shimmer 1.2s linear infinite;border-radius:var(--r-sm)}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:0 0}}
+.skel.sq{width:44px;height:44px;border-radius:14px}
+.skel.l1{height:13px;width:60%}
+.skel.l2{height:11px;width:38%;margin-top:var(--sp-2)}
+.skel.block{height:190px;border-radius:var(--r-lg)}
+.skel.pill{height:32px;width:64px;border-radius:var(--r-pill)}
+
+.state{display:flex;flex-direction:column;align-items:center;text-align:center;padding:var(--sp-6) var(--sp-4)}
+.state .art{margin-bottom:var(--sp-3)}
+.state .badge{width:72px;height:72px;border-radius:24px;display:flex;align-items:center;justify-content:center;background:var(--sun-100);color:var(--sun-700);margin-bottom:var(--sp-4)}
+.state.err .badge{background:var(--alert-100);color:var(--alert-600)}
+.state .title{font-size:var(--fs-section);margin-bottom:var(--sp-1)}
+.state .footnote{max-width:260px}
+.state .btn{margin-top:var(--sp-5);width:auto;padding:0 var(--sp-6)}
+
+/* ====================== feature components ====================== */
+/* login */
+.welcome{margin:-54px calc(-1 * var(--sp-5)) 0;padding:76px var(--sp-5) var(--sp-8);border-radius:0 0 var(--r-xl) var(--r-xl);color:#fff;position:relative;overflow:hidden;text-align:center}
+.welcome .mascot{margin:0 auto -8px}
+.wordmark{font-family:var(--font-display);font-variation-settings:"SOFT" 100;font-weight:700;font-size:var(--fs-section);letter-spacing:-.01em;display:inline-flex;align-items:center;gap:6px}
+.welcome .title-lg{margin-top:var(--sp-2)}
+.welcome p{color:rgba(255,255,255,.78);margin-top:var(--sp-2)}
+.altline{display:flex;align-items:center;justify-content:center;gap:var(--sp-1);margin-top:var(--sp-3);font-size:var(--fs-footnote);color:var(--ink-2)}
+.forgot{display:flex;justify-content:flex-end}
+
+/* hero (home + scan) */
+.hero{border-radius:var(--r-xl);padding:var(--sp-5) var(--sp-5) var(--sp-4)}
+.hero-top{display:flex;align-items:flex-end;gap:var(--sp-2);min-height:200px}
+.hero-top .grow{padding-bottom:var(--sp-1)}
+/* Mini Me stands in the card with its sprout poking out over the top edge */
+.herowrap{position:relative}
+.hero-space{width:150px;flex-shrink:0}
+.hero-mm{position:absolute;right:2px;top:-34px;pointer-events:none;z-index:1}
+.hero-mm.scan{top:-28px}
+.night .mm-shadow,.hero-mm .mm-shadow{fill:#fff;opacity:.10}
+.hero-top.short{min-height:176px}
+.hero .display{color:#fff;margin:var(--sp-1) 0 var(--sp-2)}
+.bubble{position:relative;background:#fff;color:var(--ink);border-radius:18px 18px 18px 6px;padding:var(--sp-3) var(--sp-4);font-size:var(--fs-footnote);font-weight:600;line-height:1.35;box-shadow:0 8px 20px rgba(0,0,0,.18);margin-bottom:var(--sp-1)}
+.bubble::after{content:"";position:absolute;right:-5px;bottom:14px;width:14px;height:14px;background:#fff;border-radius:3px;transform:rotate(45deg)}
+.hero .bubble{border-radius:18px}
+.bandpill{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 var(--sp-3);border-radius:var(--r-pill);font-size:var(--fs-footnote);font-weight:700;background:rgba(255,255,255,.14);color:#fff}
+.bandpill.healthy{background:var(--sprout-500);color:#06281A}
+.bandpill.fair{background:var(--sun-300);color:#3A2200}
+.bandpill.attn{background:#FF8A80;color:#3A0906}
+/* next band: one quiet progress line instead of a grid of tiles */
+.nextband{margin-top:var(--sp-4);padding-top:var(--sp-4);box-shadow:0 -1px 0 rgba(255,255,255,.12)}
+.nextband .meter{margin:var(--sp-2) 0 0}
+.infobtn{display:inline-flex;align-items:center;gap:6px;position:relative;color:rgba(255,255,255,.74)}
+.infobtn::before{content:"";position:absolute;inset:-14px -10px}
+.infobtn:active{opacity:.6}
+/* home: Mini Me's sky runs edge to edge under the status bar, like the welcome screen.
+   No card inside a page: the greeting, Mini Me and the score share one stage. */
+.skyhead{margin:-54px calc(-1 * var(--sp-5)) 0;padding:62px var(--sp-5) var(--sp-5);border-radius:0 0 var(--r-xl) var(--r-xl);box-shadow:0 14px 30px rgba(28,33,64,.18)}
+.skyhead .title-lg{color:#fff}
+.skyhead .offline{background:rgba(255,255,255,.12);margin-top:var(--sp-1)}
+.stage{position:relative;display:flex;align-items:flex-end;min-height:226px;margin-top:var(--sp-2)}
+.stage .grow{position:relative;z-index:2;max-width:186px;padding-bottom:var(--sp-1)}
+.stage .display{color:#fff;margin:var(--sp-1) 0 var(--sp-2)}
+.stage-mm{position:absolute;right:-18px;bottom:-10px;pointer-events:none;z-index:1}
+/* streak and points: status chips beside the name */
+.topbar{align-items:flex-end;margin:0}
+.topstats{display:flex;gap:var(--sp-2);padding-bottom:2px}
+.statpill{display:inline-flex;align-items:center;gap:5px;height:36px;padding:0 var(--sp-3) 0 10px;border-radius:var(--r-pill);background:rgba(255,255,255,.12);color:#fff;
+  font-family:var(--font-display);font-variation-settings:"SOFT" 100;font-weight:700;font-size:var(--fs-body);font-variant-numeric:tabular-nums}
+.meter{height:8px;background:rgba(255,255,255,.16);border-radius:var(--r-pill);overflow:hidden;margin:var(--sp-2) 0 6px}
+.meter i{display:block;height:100%;width:var(--v);background:var(--grad-sun);border-radius:var(--r-pill)}
+.meter.light{background:rgba(28,33,64,.08)}
+
+/* plan */
+.plan-h{display:flex;align-items:center;gap:var(--sp-3)}
+.ring{width:44px;height:44px;flex-shrink:0;position:relative}
+.ring svg{transform:rotate(-90deg)}
+.ring b{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:var(--fs-caption);font-weight:700}
+
+/* week chart */
+.week{display:flex;align-items:flex-end;gap:var(--sp-2);height:124px;margin-top:var(--sp-4);position:relative}
+.week .goal{position:absolute;left:0;right:0;bottom:calc(var(--g) + 24px);border-top:2px dashed var(--line)}
+.week .goal span{position:absolute;right:0;top:-20px;font-size:var(--fs-caption);font-weight:600;color:var(--ink-3);background:var(--card);padding-left:4px}
+.week .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px;height:100%;justify-content:flex-end;position:relative;z-index:1}
+.week .b{width:100%;max-width:30px;height:var(--h);min-height:6px;border-radius:10px;background:var(--fill)}
+.week .col.hit .b{background:var(--grad-sun)}
+.week .col.today .b{background:var(--night)}
+.week .v{font-size:var(--fs-caption);font-weight:700;color:var(--ink);min-height:16px}
+.week .d{font-size:var(--fs-caption);color:var(--ink-3);font-weight:600}
+.week .col.today .d{color:var(--ink)}
+
+/* avatars */
+.ava{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-variation-settings:"SOFT" 100;font-weight:700;font-size:var(--fs-body);flex-shrink:0;background:var(--fill);color:var(--ink)}
+.ava.sun{background:var(--sun-100);color:var(--sun-700)} .ava.sprout{background:var(--sprout-100);color:var(--sprout-700)}
+.ava.sky{background:var(--sky-100);color:var(--sky-700)} .ava.rose{background:var(--rose-100);color:var(--rose-700)}
+.ava.me{background:var(--night);color:#fff}
+.ava.mm{overflow:hidden;align-items:flex-start}
+.ava.mm .mascot{margin-top:var(--mt);flex-shrink:0}
+.ava.mm.me{background:var(--grad-night)}
+.avstack{display:flex}
+.avstack .ava{width:36px;height:36px;font-size:var(--fs-footnote);box-shadow:0 0 0 3px var(--card)}
+.avstack .ava + .ava{margin-left:-10px}
+
+/* check-in */
+.pain{display:flex;align-items:center;gap:var(--sp-3);margin-top:var(--sp-3)}
+.pain{min-height:112px;justify-content:center;gap:var(--sp-4)}
+.pain .grow{flex:0 1 auto;min-width:150px}
+.pain .mascot{margin:-14px -8px -12px -12px}
+.slider{width:100%;appearance:none;-webkit-appearance:none;height:12px;border-radius:var(--r-pill);margin:var(--sp-4) 0 var(--sp-2);
+  background:linear-gradient(90deg,var(--sprout-500),#F2B33D 55%,var(--alert-600));cursor:pointer;margin-bottom:var(--sp-4)}
+.slider::-webkit-slider-thumb{appearance:none;-webkit-appearance:none;width:34px;height:34px;border-radius:50%;background:#fff;box-shadow:0 3px 10px rgba(28,33,64,.3),0 0 0 1px rgba(28,33,64,.06)}
+.slider::-moz-range-thumb{width:34px;height:34px;border-radius:50%;background:#fff;border:none;box-shadow:0 3px 10px rgba(28,33,64,.3)}
+.sliderends{display:flex;justify-content:space-between}
+.logtime{font-family:var(--font-display);font-variation-settings:"SOFT" 100;font-weight:700;font-variant-numeric:tabular-nums;font-size:var(--fs-body);width:72px;color:var(--ink)}
+
+/* body map */
+.pad.fill{display:flex;flex-direction:column}
+.bodymap{flex:1;display:flex;align-items:center;min-height:380px}
+.bm{position:relative;width:100%;height:380px;display:flex;justify-content:center;align-items:center}
+.bm::before{content:"";position:absolute;left:50%;top:50%;width:300px;height:300px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,var(--sun-100),transparent 70%)}
+.bm .mascot{position:relative;margin-top:-14px}
+.spot{position:absolute;display:inline-flex;align-items:center;gap:6px;min-height:var(--tap);padding:0 var(--sp-4);border-radius:var(--r-pill);background:var(--card);box-shadow:var(--sh-1);
+  font-size:var(--fs-footnote);font-weight:600;transition:transform .12s,background-color .15s;z-index:2}
+.spot:active{transform:scale(.93)}
+.spot[aria-pressed="true"]{background:var(--night);color:#fff}
+.spot[aria-pressed="true"] .icn{color:#FF8A80}
+.spot-neck{left:0;top:40px} .spot-shoulder{right:0;top:94px} .spot-back{left:0;top:160px}
+.spot-hips{right:0;top:218px} .spot-wrists{left:0;top:278px} .spot-legs{right:0;top:300px}
+
+/* camera */
+.viewport{border-radius:var(--r-lg);height:340px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;margin:0 0 var(--sp-4);
+  background:radial-gradient(420px 260px at 50% 0%, rgba(255,140,70,.22), transparent 62%), linear-gradient(180deg,#151933,#0E1124);color:#fff}
+.viewport.short{height:210px}
+.viewport.short.gated{height:auto;min-height:210px;padding:var(--sp-8) 0}
+.viewport::before,.viewport::after{content:"";position:absolute;width:28px;height:28px;border:3px solid rgba(255,190,120,.85)}
+.viewport::before{top:16px;left:16px;border-right:none;border-bottom:none;border-radius:10px 0 0 0}
+.viewport::after{bottom:16px;right:16px;border-left:none;border-top:none;border-radius:0 0 10px 0}
+.silguide{position:absolute;inset:0;width:100%;height:100%}
+.scanline{position:absolute;left:8%;right:8%;height:2px;border-radius:2px;background:linear-gradient(90deg,transparent,rgba(255,190,120,.95),transparent);box-shadow:0 0 16px rgba(255,170,90,.85);animation:scan 2.8s ease-in-out infinite}
+@keyframes scan{0%,100%{top:8%}50%{top:90%}}
+.vp-msg{position:relative;text-align:center;padding:0 var(--sp-6)}
+.vp-msg .headline{color:#fff}
+.vp-msg .footnote{color:rgba(255,255,255,.75);margin-top:var(--sp-1)}
+.vp-msg .btn{margin-top:var(--sp-4)}
+.vp-msg .badge{width:60px;height:60px;border-radius:20px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;margin:0 auto var(--sp-3)}
+.vp-msg.bottom{position:absolute;left:var(--sp-4);right:var(--sp-4);bottom:var(--sp-4);padding:var(--sp-3) var(--sp-4);border-radius:var(--r-md);background:rgba(14,17,36,.7);backdrop-filter:blur(8px)}
+.angles{display:flex;gap:var(--sp-2);margin-bottom:var(--sp-3)}
+.angles .chip{flex:1;justify-content:center;height:40px}
+.angles .chip.done{background:var(--sprout-100);color:var(--sprout-700)}
+.angles .chip.now{background:var(--night);color:#fff}
+
+/* score dial + bars */
+.dial{width:168px;height:168px;border-radius:50%;margin:0 auto;position:relative;display:flex;align-items:center;justify-content:center;background:conic-gradient(var(--c) var(--deg), var(--fill) 0)}
+.dial .in{position:absolute;inset:13px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.dial .display{font-size:var(--fs-display)}
+.band{display:inline-flex;align-items:center;gap:6px}
+.bar{display:flex;align-items:center;gap:var(--sp-3);min-height:36px}
+.bar .lab{width:64px;font-size:var(--fs-footnote);font-weight:600}
+.bar .track{flex:1;height:10px;background:var(--fill);border-radius:var(--r-pill);overflow:hidden}
+.bar .track i{display:block;height:100%;width:var(--v);background:var(--c);border-radius:var(--r-pill)}
+.bar .val{width:30px;text-align:right;font-family:var(--font-display);font-variation-settings:"SOFT" 100;font-size:var(--fs-body);font-weight:700}
+
+.meet{display:flex;align-items:center;gap:var(--sp-2)}
+.meet .mascot{margin:-10px -12px -6px -12px}
+.scorebadge{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-variation-settings:"SOFT" 100;font-weight:700;font-size:var(--fs-headline);flex-shrink:0}
+.scorebadge.healthy{background:var(--sprout-100);color:var(--sprout-700)}
+.scorebadge.fair{background:var(--sun-100);color:var(--sun-700)}
+.scorebadge.attn{background:var(--alert-100);color:var(--alert-600)}
+
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:var(--sp-1);text-align:center}
+.cal .dow{font-size:var(--fs-caption);font-weight:700;color:var(--ink-3);padding:var(--sp-1) 0}
+.day{height:var(--tap);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:var(--fs-footnote);font-weight:500;font-variant-numeric:tabular-nums;color:#A3A6B8;text-align:center;transition:transform .12s,background-color .15s}
+.day.avail{background:var(--sun-50);color:var(--ink);font-weight:700;box-shadow:inset 0 0 0 1.5px var(--sun-100)}
+.day.avail:active{transform:scale(.9)}
+.day.sel{background:var(--night);color:#fff;box-shadow:none}
+.day.today{box-shadow:inset 0 0 0 1.5px var(--ink-3)}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-2)}
+.slot{min-height:48px;border-radius:14px;background:var(--card);box-shadow:var(--sh-1);font-size:var(--fs-footnote);font-weight:600;text-align:center;transition:transform .12s}
+.slot:active:not(:disabled){transform:scale(.95)}
+.slot.sel{background:var(--night);color:#fff}
+.slot:disabled{background:var(--fill);box-shadow:none;color:#A3A6B8;text-decoration:line-through}
+.kv{display:flex;justify-content:space-between;align-items:center;min-height:48px;padding:0 var(--sp-5)}
+.kv + .kv{box-shadow:0 -1px 0 var(--line)}
+.spin{width:40px;height:40px;border-radius:50%;border:4px solid var(--fill);border-top-color:var(--sun-500);margin:var(--sp-2) auto var(--sp-4);animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.celebrate{text-align:center;margin:0 calc(-1 * var(--sp-5));padding:var(--sp-2) var(--sp-5) var(--sp-5)}
+.celebrate .mascot{margin:0 auto}
+
+/* doctors */
+.doccard .meta{display:flex;align-items:center;gap:6px;margin-top:var(--sp-3);color:var(--ink-2)}
+.doccard .meta .icn{display:inline-block;vertical-align:-2px}
+.dot-sep{width:3px;height:3px;border-radius:50%;background:var(--ink-3);margin:0 2px}
+.doccard .spread{padding-top:var(--sp-3);box-shadow:0 -1px 0 var(--line)}
+/* learn: the ring header follows the tabs closely */
+.seg + .section-h{margin-top:var(--sp-2)}
+.listcap.center{margin-top:var(--sp-4)}
+/* feed */
+.composer .row{align-items:center}
+.post .who{display:flex;align-items:center;gap:var(--sp-3)}
+.post .what{margin-top:var(--sp-3);display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.post + .post{margin-top:var(--sp-3)}
+.post.mine{background:var(--sun-50);box-shadow:none}
+
+/* lessons */
+.thumb{border-radius:14px;flex-shrink:0;overflow:hidden}
+.media{border-radius:var(--r-lg);overflow:hidden;background:var(--card);box-shadow:var(--sh-1)}
+.media .stage{position:relative}
+.media .play{position:absolute;inset:0;margin:auto;width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,.96);color:var(--ink);display:flex;align-items:center;justify-content:center;box-shadow:var(--sh-2);transition:transform .12s}
+.media .play:active{transform:scale(.9)}
+.media .bar-row{display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-5)}
+.media .scrub{flex:1;height:6px;background:var(--fill);border-radius:var(--r-pill);overflow:hidden}
+.media .scrub i{display:block;height:100%;width:22%;background:var(--grad-sun)}
+.media .cap{padding:var(--sp-3) var(--sp-5)}
+.keynum{width:32px;height:32px;border-radius:10px;background:var(--sky-100);color:var(--sky-700);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-variation-settings:"SOFT" 100;font-weight:700;flex-shrink:0}
+
+/* report */
+.doc{background:#fff;border-radius:var(--r-md);padding:var(--sp-6) var(--sp-5);box-shadow:var(--sh-2)}
+.doc .rule{height:3px;background:var(--grad-sun);border-radius:2px;margin:var(--sp-3) 0 var(--sp-1)}
+.doc h4{font-size:var(--fs-caption);color:var(--ink);margin:var(--sp-5) 0 var(--sp-2);font-weight:700;text-transform:uppercase;letter-spacing:.08em}
+.doc table{width:100%;border-collapse:collapse;font-size:var(--fs-caption)}
+.doc td{padding:var(--sp-2) 2px;box-shadow:0 -1px 0 var(--line)}
+.doc td:last-child{text-align:right;font-weight:700}
+.doc .foot{margin-top:var(--sp-5);padding-top:var(--sp-3);box-shadow:0 -1px 0 var(--line)}
+.tile{background:var(--card);border-radius:var(--r-md);padding:var(--sp-4) var(--sp-3);box-shadow:var(--sh-1)}
+.tile .num{font-size:var(--fs-title);display:block;line-height:1.1;margin-top:var(--sp-2)}
+
+/* triage */
+.check{width:28px;height:28px;border-radius:9px;box-shadow:inset 0 0 0 2px var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;transition:background-color .15s}
+[aria-checked="true"] .check{background:var(--alert-600);box-shadow:none}
+.tick{width:28px;height:28px;border-radius:50%;box-shadow:inset 0 0 0 2px var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;transition:background-color .15s}
+[aria-pressed="true"] .tick{background:var(--sprout-500);box-shadow:none}
+.item[aria-checked="true"]{background:var(--alert-100)}
+
+/* ====================== review panel ====================== */
+.panel{width:380px;max-height:min(844px, calc(100vh - 48px));overflow-y:auto;background:var(--panel-bg);backdrop-filter:blur(10px);border:1px solid var(--panel-line);border-radius:var(--r-xl);padding:var(--sp-6);color:var(--panel-ink)}
+.panel h2{font-family:var(--font-display);font-variation-settings:"SOFT" 100;font-size:22px;font-weight:700;margin-bottom:var(--sp-1)}
+.panel > p{font-size:var(--fs-footnote);color:var(--panel-muted);margin-bottom:var(--sp-3)}
+.panel h3{font-size:var(--fs-caption);text-transform:uppercase;letter-spacing:.08em;color:var(--panel-muted);margin:var(--sp-5) 0 var(--sp-2);font-weight:700}
+.demo{display:flex;gap:var(--sp-2);flex-wrap:wrap}
+.demo button{font-size:var(--fs-caption);font-weight:700;min-height:36px;padding:0 var(--sp-3);border-radius:var(--r-pill);background:var(--panel-ink);color:var(--page-bg1);transition:transform .12s}
+.demo button:active{transform:scale(.95)}
+.demo button[aria-pressed="true"]{background:var(--alert-600);color:#fff}
+.swatches{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-2)}
+.sw{border-radius:var(--r-sm);height:48px;display:flex;align-items:flex-end;padding:var(--sp-1) 6px;font-size:10px;font-weight:700;color:#fff}
+.sw.light{color:var(--ink)}
+.evo{display:flex;align-items:flex-end;justify-content:space-between;background:var(--card);border-radius:var(--r-md);padding:var(--sp-3) var(--sp-2) var(--sp-2)}
+.evo div{text-align:center;font-size:10px;font-weight:700;color:var(--ink-3)}
+.scale div{display:flex;align-items:baseline;justify-content:space-between;gap:var(--sp-2);padding:2px 0}
+.scale span{font-size:var(--fs-caption);color:var(--panel-muted)}
+.hx{padding:var(--sp-3) 0;box-shadow:0 -1px 0 var(--panel-line)}
+.hx b{font-size:var(--fs-footnote);display:block;font-weight:700}
+.caption .t-flame{vertical-align:-2px}
+.hx p{font-size:var(--fs-caption);color:var(--panel-muted);line-height:1.5;margin-top:2px}
+@media(max-width:880px){.panel{display:none}body{padding:var(--sp-3)}}
+@media(max-width:430px){body{padding:0}.phone{width:100vw;height:100vh;border-radius:0;box-shadow:none}}
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="statusbar" id="statusbar">
+    <span id="clock">9:41</span>
+    <div class="island" id="island" aria-live="polite"><span class="live" id="islandLive"></span></div>
+    <span class="sys" aria-hidden="true">
+      <svg width="18" height="12" viewBox="0 0 17 11"><g fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="1"/><rect x="4.5" y="5" width="3" height="6" rx="1"/><rect x="9" y="2.5" width="3" height="8.5" rx="1"/><rect x="13.5" y="0" width="3" height="11" rx="1"/></g></svg>
+      <svg width="16" height="12" viewBox="0 0 16 11" fill="none"><path d="M8 9.5l2.2-2.6a3.4 3.4 0 0 0-4.4 0z" fill="currentColor"/><path d="M2.5 4.2a8 8 0 0 1 11 0M4.9 6.6a4.8 4.8 0 0 1 6.2 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <svg width="26" height="12" viewBox="0 0 23 11"><rect x=".6" y=".6" width="19" height="9.8" rx="2.6" stroke="currentColor" stroke-opacity=".4" fill="none" stroke-width="1.2"/><rect x="2.1" y="2.1" width="13" height="6.8" rx="1.4" fill="currentColor"/><path d="M21.4 3.6v3.8a2 2 0 0 0 0-3.8z" fill="currentColor" fill-opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <div class="notif" id="notif" role="status">
+    <div class="appic" id="notifIcon"></div>
+    <div class="grow">
+      <div class="spread"><b class="caption strong">POSHTURE</b><span class="caption">now</span></div>
+      <div class="strong">Mini Me wants to stretch</div>
+      <div class="footnote">You’ve been sitting for 58 minutes. Stand up and check in to keep your 4-day streak.</div>
+      <div class="acts">
+        <button class="pillbtn" onclick="notifCheckin()">Check in</button>
+        <button class="pillbtn soft" onclick="hideNotif()">Later</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="screen" id="screen"></div>
+  <nav class="tabbar" id="tabbar" hidden aria-label="Main"></nav>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="scrim" id="scrim"><div class="sheet" id="sheet" role="dialog" aria-modal="true"></div></div>
+  <div class="sysalert" id="sysalert" role="alertdialog" aria-modal="true"><div class="box" id="sysbox"></div></div>
+  <div class="homebar"></div>
+</div>
+
+<aside class="panel" aria-label="Design review notes">
+  <h2>Iteration 6 — critique, then bolder moves</h2>
+  <p>Same screens, flows and features as before. Each change below starts from a problem found in a screen-by-screen critique of iteration 5. Demo buttons trigger live states.</p>
+  <div class="demo">
+    <button onclick="showNotif()">Send hourly nudge</button>
+    <button onclick="demoScanFail()">Next scan fails</button>
+    <button id="offBtn" aria-pressed="false" onclick="toggleOffline()">Go offline</button>
+    <button onclick="S.demoScore=48;toast('Next scan outcome: needs attention (48)')">Outcome: 48</button>
+    <button onclick="S.demoScore=86;toast('Next scan outcome: healthy (86)')">Outcome: 86</button>
+    <button onclick="resetApp()">Reset</button>
+    <button onclick="exportScreen()">Export PNG</button>
+  </div>
+
+  <h3>Mini Me grows with your posture</h3>
+  <div class="evo" id="evo"></div>
+
+  <h3>Palette — complementary Night + Sunrise</h3>
+  <div class="swatches">
+    <div class="sw" style="background:#1C2140">Night</div>
+    <div class="sw" style="background:linear-gradient(135deg,#FF6A3D,#FFC24F)">Sunrise</div>
+    <div class="sw light" style="background:#F7F2EB">Paper</div>
+    <div class="sw" style="background:#C4342E">Alert</div>
+    <div class="sw light" style="background:#FFEBDC">Check-in</div>
+    <div class="sw light" style="background:#DCF3E7">Move</div>
+    <div class="sw light" style="background:#E1EBFB">Learn</div>
+    <div class="sw light" style="background:#FCE3EB">Friends</div>
+  </div>
+  <h3>Type — Fraunces + Instrument Sans</h3>
+  <div class="scale">
+    <div><b style="font:700 32px/1.1 Fraunces;font-variation-settings:'SOFT' 100">Large 32</b><span>Fraunces · tab roots</span></div>
+    <div><b style="font:700 24px/1.2 Fraunces;font-variation-settings:'SOFT' 100">Title 24</b><span>Fraunces · pushed screens, stats</span></div>
+    <div><b style="font:700 20px/1.2 Fraunces;font-variation-settings:'SOFT' 100">Section 20</b><span>Fraunces · section headers</span></div>
+    <div><b style="font:600 17px 'Instrument Sans'">Headline 17</b><span>buttons, row titles</span></div>
+    <div><b style="font:400 15px 'Instrument Sans'">Body 15 · Footnote 13 · Caption 12</b></div>
+  </div>
+
+  <h3>What the critique found, and what changed</h3>
+  <div class="hx"><b>A haze with no source</b><p>An orange glow sat in the corner of every dark card, and orange button shadows bled onto navy. Light should come from somewhere; this read as a smudge. Removed, so the dark surfaces are clean and the stars do the atmosphere.</p></div>
+  <div class="hx"><b>Home was a card on a page</b><p>Mini Me was boxed into a card, under a name that sat outside it. Now its sky runs edge to edge under the status bar, as on the welcome screen, and the greeting, Mini Me and the score share one stage. One fewer container, a bigger character, and the status bar turns white over the sky and frosted once it scrolls away. (Figure–ground, consistency, Nielsen #4.)</p></div>
+  <div class="hx"><b>Rows were sliced off by the tab bar</b><p>Content stopped at a hard white slab. The tab bar is now a translucent material that content slides under, like iOS, so the page feels continuous. (Platform conventions, Jakob’s law.)</p></div>
+  <div class="hx"><b>Learn looked like a settings list</b><p>Stretches were tiny icons while lessons had pictures, and a separate streak card measured a list it wasn’t attached to. Stretches now have illustrations in the lesson style, and the streak target is the list’s own header, the same ring header as Home’s plan. (Similarity, proximity, consistency.)</p></div>
+  <div class="hx"><b>Friends were initials</b><p>Classmates now appear as their own Mini Me, coloured and postured by their score, so the social tab lives in the same world as the rest of the app.</p></div>
+  <div class="hx"><b>Small things that added noise</b><p>Check-in choices lost the box inside the box, and the pain row shows a real prompt (“0 is no pain, 10 is the worst”) instead of a lone dash. Three “Free” chips under a “Free” header became tick circles you tap. Progress numbers are ink, with colour moved to small icons. “Start the safety check” is a normal primary button: red stays for real warnings. The pain map sits in the middle of the screen, and the specialists title fits on one line. The focus ring uses the brand colour.</p></div>
+  <div class="hx"><b>Kept from earlier iterations</b><p>One focal action per screen, actions in the thumb zone, Mini Me’s growth, the Night and Sunrise palette, colour-coded activities, transitions, skeleton/empty/error states, offline queue, in-context permissions, Dynamic Island feedback, 44pt targets, reduced-motion support. Same screens, buttons and navigation as before.</p></div>
+</aside>
+
+<script>
+/* Mini Me v4 — a soft bean character whose spine, face and colour respond to posture.
+   t = 0 slouched/tired … 1 tall/bright. Pure SVG, no images. */
+function mmLerp(a,b,t){ return a+(b-a)*t; }
+function mmBez(p0,p1,p2,p3,s){ const u=1-s; return [u*u*u*p0[0]+3*u*u*s*p1[0]+3*u*s*s*p2[0]+s*s*s*p3[0], u*u*u*p0[1]+3*u*u*s*p1[1]+3*u*s*s*p2[1]+s*s*s*p3[1]]; }
+function mmBezD(p0,p1,p2,p3,s){ const u=1-s; return [3*u*u*(p1[0]-p0[0])+6*u*s*(p2[0]-p1[0])+3*s*s*(p3[0]-p2[0]), 3*u*u*(p1[1]-p0[1])+6*u*s*(p2[1]-p1[1])+3*s*s*(p3[1]-p2[1])]; }
+let mmUid=0;
+function mascot(size, score, pains, opts={}){
+  const id="mm"+(++mmUid);
+  const t=Math.max(0,Math.min(1,(score-35)/57));
+  const L=(a,b)=>mmLerp(a,b,t);
+  // spine: base → top, slouch bends the top forward (right) and down
+  const B=[100,156], C1=[L(98,100),L(128,128)], C2=[L(80,100),L(90,92)], T=[L(124,100),L(78,62)];
+  const at=s=>mmBez(B,C1,C2,T,s);
+  const nrm=s=>{ const d=mmBezD(B,C1,C2,T,s), l=Math.hypot(d[0],d[1]); return [-d[1]/l, d[0]/l]; }; // points to the front (right)
+  const tan=s=>{ const d=mmBezD(B,C1,C2,T,s), l=Math.hypot(d[0],d[1]); return [d[0]/l,d[1]/l]; };
+  const rad=s=>51-10*s+5*Math.exp(-Math.pow((s-0.9)/0.14,2))-2*Math.exp(-Math.pow((s-0.62)/0.14,2));
+  // outline = union of discs swept along the spine, traced in polar form so a bend can never fold or spike
+  const D=Array.from({length:49},(_,i)=>{ const s=i/48; return [at(s),rad(s)]; });
+  const c=at(0.42), M=96, P=[];
+  for(let i=0;i<M;i++){ const a=i/M*2*Math.PI, u=[Math.cos(a),Math.sin(a)]; let best=0;
+    for(const [p,r] of D){ const dx=p[0]-c[0], dy=p[1]-c[1], b=u[0]*dx+u[1]*dy, q=r*r-(dx*dx+dy*dy)+b*b; if(q>=0) best=Math.max(best,b+Math.sqrt(q)); }
+    P.push([c[0]+u[0]*best, c[1]+u[1]*best]); }
+  const f=p=>p[0].toFixed(1)+" "+p[1].toFixed(1);
+  let body=`M ${f(P[0])}`;   // Catmull-Rom through the samples, as cubic Béziers
+  for(let i=0;i<M;i++){ const p0=P[(i-1+M)%M], p1=P[i], p2=P[(i+1)%M], p3=P[(i+2)%M];
+    body+=` C ${f([p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6])} ${f([p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6])} ${f(p2)}`; }
+  body+=" Z";
+  // colour: three hand-picked stops (sleepy lilac → peach → sunrise tangerine), mixed in RGB so the middle never turns brown
+  const mix3=(a,b,c)=>{ const h=x=>[1,3,5].map(i=>parseInt(x.slice(i,i+2),16)); const A=h(a),Bc=h(b),C=h(c);
+    const u=t<.5?t/.5:(t-.5)/.5, P=t<.5?A:Bc, Q=t<.5?Bc:C; return `rgb(${P.map((v,i)=>Math.round(v+(Q[i]-v)*u)).join(" ")})`; };
+  const top=mix3("#E6DFEC","#FFC4A6","#FFA368"), bot=mix3("#C8BED8","#FF9C80","#FF6440"), deep=mix3("#9A8FB3","#E2705E","#D9402A");
+  const ridge=mix3("#B3A8C8","#FF8F6B","#FFC43D");
+  // face frame
+  const fs=0.76, fp=at(fs), fn=nrm(fs), ft=tan(fs);
+  const fc=[fp[0]+fn[0]*L(6,6), fp[1]+fn[1]*L(6,6)];
+  const fang=(Math.atan2(ft[1],ft[0])*180/Math.PI+90)*0.6;
+  // arms
+  const sh=s=>{ const p=at(s), n=nrm(s), r=rad(s)*0.86; return {f:[p[0]+n[0]*r,p[1]+n[1]*r], b:[p[0]-n[0]*r,p[1]-n[1]*r]}; };
+  const S=sh(0.4);
+  const cheer=t>0.86;
+  const handF= cheer? [S.f[0]+14,S.f[1]-20] : [S.f[0]+L(9,8),S.f[1]+L(15,13)];
+  const handB= cheer? [S.b[0]-14,S.b[1]-20] : [S.b[0]-L(4,8),S.b[1]+L(15,13)];
+  // expression
+  const eyeRy=L(6.2,8.4), lid=t<0.45, mouthC=L(-3.5,7), open=t>0.72;
+  const eyes=[-14,14].map(x=>`<g transform="translate(${x} -2) scale(${x<0?1:-1} 1)">
+      ${lid? `<path d="M -6.4 0 A 6.4 6 0 0 0 6.4 0 Z" fill="#1B2140"/><path d="M -7.4 1.4 L 7.2 -1.2" stroke="#1B2140" stroke-width="2.4" fill="none" stroke-linecap="round"/>`
+           : `<ellipse rx="6.4" ry="${eyeRy}" fill="#1B2140"/><circle cx="2" cy="${-eyeRy*0.42}" r="${L(1.6,2.7)}" fill="#fff"/><circle cx="-2" cy="${eyeRy*0.42}" r="1.1" fill="#fff" opacity=".75"/>`}
+    </g>`).join("");
+  const brows= t<0.4? `` 
+             : t>0.6? `<path d="M -20 -16 Q -14 -19.5 -8 -16" stroke="#1B2140" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M 20 -16 Q 14 -19.5 8 -16" stroke="#1B2140" stroke-width="2.2" fill="none" stroke-linecap="round"/>`:"";
+  const mouth= open? `<path d="M -6.5 9 Q 0 ${9+mouthC*1.25} 6.5 9 Z" fill="#1B2140"/><path d="M -3.4 ${9+mouthC*0.62} Q 0 ${9+mouthC*1.05} 3.4 ${9+mouthC*0.62}" fill="#FF7A7A"/>`
+             : `<path d="M -5 10 Q 0 ${10+mouthC} 5 10" stroke="#1B2140" stroke-width="2.4" fill="none" stroke-linecap="round"/>`;
+  const blush=`<ellipse cx="-23" cy="8" rx="6.5" ry="4" fill="#FF6F7D" opacity="${L(.22,.6)}"/><ellipse cx="23" cy="8" rx="6.5" ry="4" fill="#FF6F7D" opacity="${L(.22,.6)}"/>`;
+  const sweat= t<0.3? `<path d="M 30 -26 q -5 7 0 10 q 5 -3 0 -10 z" fill="#8FC9FF" stroke="#5DA9EE" stroke-width="1"/>`:"";
+  // sprout: droops and pales when slouched, stands and blooms when tall
+  const hp=at(1), ht=tan(1), hr=rad(1);
+  const root=[hp[0]+ht[0]*(hr-3), hp[1]+ht[1]*(hr-3)];
+  const ang=Math.atan2(ht[1],ht[0]);
+  const droop=L(1.25,0);                       // radians the stem bends forward
+  const len=L(18,24);
+  const tipA=ang+droop;
+  const mid=[root[0]+Math.cos(ang)*len*0.55, root[1]+Math.sin(ang)*len*0.55];
+  const tip=[root[0]+Math.cos(tipA)*len, root[1]+Math.sin(tipA)*len+L(6,0)];
+  const leafCol=`hsl(${L(80,150)} ${L(18,58)}% ${L(62,44)}%)`, leafHi=`hsl(${L(80,148)} ${L(18,60)}% ${L(74,58)}%)`;
+  const leaf=(sign,scale)=>{ const a=tipA*180/Math.PI + sign*L(70,50) + L(sign*25,0);
+    return `<path transform="translate(${tip[0].toFixed(1)} ${tip[1].toFixed(1)}) rotate(${a.toFixed(1)}) scale(${scale})" d="M0 0 C 4 -7 14 -8 18 0 C 14 8 4 7 0 0 Z" fill="${sign<0?leafCol:leafHi}"/>`; };
+  const bud = t>0.82? `<circle cx="${tip[0].toFixed(1)}" cy="${(tip[1]).toFixed(1)}" r="5.5" fill="#FFD36B" stroke="#F4A93B" stroke-width="1.5"/>`:"";
+  const sprout=`<g class="mm-sprout"><path d="M ${f(root)} Q ${f(mid)} ${f(tip)}" stroke="${leafCol}" stroke-width="3.2" fill="none" stroke-linecap="round"/>${leaf(-1,L(.8,1))}${leaf(1,L(.7,.95))}${bud}</g>`;
+  // spine ridges: Mini Me's signature. They wobble out of line when slouched and form a neat row when tall
+  const jit=[2.5,-3,3.5,-2.5,2];
+  const ridges=[0.3,0.44,0.58,0.72,0.86].map((q,i)=>{ const p=at(q), n=nrm(q), r=rad(q)-1+jit[i]*(1-t)*1.4, k=L(5.2,6.4);
+    return `<circle cx="${(p[0]-n[0]*r).toFixed(1)}" cy="${(p[1]-n[1]*r).toFixed(1)}" r="${k.toFixed(1)}" fill="${ridge}"/>`; }).join("");
+  // pain markers
+  const PP={ Neck:()=>{const p=at(0.7),n=nrm(0.7),r=rad(0.7)*0.95;return [p[0]-n[0]*r,p[1]-n[1]*r];},
+    Shoulder:()=>{const p=at(0.56),n=nrm(0.56),r=rad(0.56)*0.92;return [p[0]+n[0]*r,p[1]+n[1]*r];},
+    Back:()=>{const p=at(0.4),n=nrm(0.4),r=rad(0.4)*0.97;return [p[0]-n[0]*r,p[1]-n[1]*r];},
+    Hips:()=>{const p=at(0.1),n=nrm(0.1),r=rad(0.1)*0.97;return [p[0]-n[0]*r,p[1]-n[1]*r];},
+    Wrists:()=>handF, Legs:()=>[118,200] };
+  const painMarks=(pains||[]).filter(p=>PP[p]).map(p=>{ const q=PP[p](), a=Math.atan2(q[1]-112,q[0]-100);
+    const ln=size<180?[]:[-0.6,0,0.6].map(d=>`<path d="M ${(Math.cos(a+d)*9).toFixed(1)} ${(Math.sin(a+d)*9).toFixed(1)} L ${(Math.cos(a+d)*15).toFixed(1)} ${(Math.sin(a+d)*15).toFixed(1)}" stroke="#E5484D" stroke-width="2.6" stroke-linecap="round"/>`).join("");
+    return `<g class="mm-pain" transform="translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})"><circle r="9" fill="#E5484D" opacity=".25" class="mm-pulse"/><g class="mm-ache">${ln}</g><circle r="4.6" fill="#E5484D" stroke="#fff" stroke-width="2"/></g>`; }).join("");
+  const sparkle=(x,y,s,o)=>`<path transform="translate(${x} ${y}) scale(${s})" d="M0 -8 C1 -2 2 -1 8 0 C2 1 1 2 0 8 C-1 2 -2 1 -8 0 C-2 -1 -1 -2 0 -8Z" fill="#FFD36B" opacity="${o}"/>`;
+  const glow = t>0.6? `<circle cx="100" cy="110" r="${L(60,92)}" fill="url(#${id}g)"/>`:"";
+  const sparks = t>0.75? sparkle(36,60,1.1,1)+sparkle(166,44,0.8,.9)+sparkle(160,124,0.6,.8)+sparkle(44,128,0.5,.7):"";
+  return `<svg class="mascot ${opts.anim===false?"":"alive"}" width="${size}" height="${(size*1.23).toFixed(0)}" viewBox="0 -26 200 246" role="img" aria-label="Mini Me at posture ${score} of 100">
+  <defs>
+    <linearGradient id="${id}b" x1="0" y1="0" x2="0.35" y2="1"><stop offset="0" stop-color="${top}"/><stop offset="1" stop-color="${bot}"/></linearGradient>
+    <filter id="${id}f" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="7"/></filter>
+    <radialGradient id="${id}g"><stop offset="0" stop-color="#FFC56B" stop-opacity=".55"/><stop offset="1" stop-color="#FFC56B" stop-opacity="0"/></radialGradient>
+  </defs>
+  ${glow}${sparks}
+  <ellipse class="mm-shadow" cx="100" cy="209" rx="${L(54,46)}" ry="7" fill="#1B2140" opacity=".14"/>
+  <g class="mm-body">
+    <ellipse cx="82" cy="200" rx="14" ry="8.5" fill="${deep}"/>
+    <ellipse cx="118" cy="200" rx="14" ry="8.5" fill="${deep}"/>
+    <path d="M ${f(S.b)} L ${f(handB)}" stroke="${deep}" stroke-width="16" stroke-linecap="round"/>
+    ${sprout}
+    ${ridges}
+    <path d="${body}" fill="url(#${id}b)"/>
+    <clipPath id="${id}c"><path d="${body}"/></clipPath>
+    <g clip-path="url(#${id}c)"><path d="${body}" transform="translate(-14 6)" fill="none" stroke="${deep}" stroke-width="30" opacity=".28" filter="url(#${id}f)"/><ellipse cx="${(fp[0]+fn[0]*14).toFixed(1)}" cy="${(fp[1]-18).toFixed(1)}" rx="26" ry="16" fill="#fff" opacity=".22" filter="url(#${id}f)"/></g>
+    <ellipse transform="translate(${(fp[0]-fn[0]*22).toFixed(1)} ${(fp[1]-fn[1]*22).toFixed(1)}) rotate(${(fang-30).toFixed(1)})" rx="7" ry="14" fill="#fff" opacity=".28"/>
+    <path d="M ${f(S.f)} L ${f(handF)}" stroke="${deep}" stroke-width="15" stroke-linecap="round"/>
+    <g transform="translate(${fc[0].toFixed(1)} ${fc[1].toFixed(1)}) rotate(${fang.toFixed(1)})">
+      ${blush}<g class="mm-eyes">${eyes}</g>${brows}${mouth}${sweat}
+    </g>
+  </g>
+  ${painMarks}
+  </svg>`;
+}
+
+</script>
+<script>
+/* ---------------- dates ---------------- */
+const MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+const DOW=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+function addDays(n){ const d=new Date(); d.setDate(d.getDate()+n); return d; }
+function fmtDate(d){ return `${DOW[d.getDay()].slice(0,3)} ${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`; }
+const short=d=>`${d.getDate()} ${MONTHS[d.getMonth()].slice(0,3)}`;
+function clockNow(){ const d=new Date(); let h=d.getHours(), m=d.getMinutes(); const ap=h>=12?"PM":"AM"; h=h%12||12; return `${h}:${String(m).padStart(2,"0")} ${ap}`; }
+function greeting(){ const h=new Date().getHours(); return h<12?"Good morning":h<18?"Good afternoon":"Good evening"; }
+
+/* ---------------- state ---------------- */
+function seedReturning(){
+  return { screen:"login", user:"returning", streak:4, points:340, todayCheckins:0, todayDone:false,
+    log:[], week:[5,6,4,7,5,6], pains:["Neck","Back"], pendingPains:null,
+    kudos:{a:4,b:2}, kudosGiven:{}, follows:{Amelia:true,Jermain:true},
+    scanAngle:0, scanFailArmed:false, lessonsDone:{}, stretchesDone:{},
+    learnSeg:"stretch", friendSeg:"feed", peopleQ:"",
+    history:[{d:short(addDays(-56)),v:48},{d:short(addDays(-35)),v:57},{d:short(addDays(-14)),v:64}],
+    loaded:{}, failed:{}, offline:false, cam:null, notifs:null, cal:null, homeIntro:true };
+}
+let S=seedReturning();
+let NAV=[];
+const $=id=>document.getElementById(id);
+const REDUCED=()=>matchMedia("(prefers-reduced-motion: reduce)").matches;
+const lastScan=()=>S.history[S.history.length-1];
+const posture=()=>Math.min(95,(lastScan()?.v||48)+Object.keys(S.stretchesDone).length*2+(S.todayDone?2:0));
+const band=v=>v>=70?{w:"Healthy",k:"healthy",c:"var(--sprout-500)",t:"t-sprout",i:"checkCircle",next:null}
+             :v>=50?{w:"Fair",k:"fair",c:"var(--sun-500)",t:"t-sun",i:"trendUp",next:70}
+             :{w:"Needs attention",k:"attn",c:"var(--alert-600)",t:"t-alert",i:"alertTri",next:50};
+
+/* ---------------- icons: one 24×24, 2px stroke set ---------------- */
+const I={
+ home:'<path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5h-5v5H5a1 1 0 0 1-1-1z"/>',
+ scan:'<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="3.2"/>',
+ learn:'<path d="M12 7c-1.7-1.4-4.2-2.2-8-2.2v12.9c3.8 0 6.3.8 8 2.3 1.7-1.5 4.2-2.3 8-2.3V4.8c-3.8 0-6.3.8-8 2.2zM12 7v13"/>',
+ friends:'<circle cx="9" cy="8.2" r="3.1"/><path d="M3.6 19c.3-3 2.6-4.8 5.4-4.8s5.1 1.8 5.4 4.8M16.6 6.4a2.7 2.7 0 1 1-.1 5.4M15.8 14.4c2.6.4 4.4 2.1 4.6 4.6"/>',
+ check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+ checkCircle:'<circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.3l2.4 2.4 4.6-5"/>',
+ clock:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v4.8l3 1.8"/>',
+ stretch:'<circle cx="12" cy="5.4" r="2.3"/><path d="M12 8v6.5M12 10l-5 3M12 10l5 3M12 14.5l-3.6 5M12 14.5l3.6 5"/>',
+ bulb:'<path d="M12 3a6 6 0 0 1 3.5 10.9c-.6.5-1 1.2-1 2.1h-5c0-.9-.4-1.6-1-2.1A6 6 0 0 1 12 3zM9.8 19h4.4M10.6 21.2h2.8"/>',
+ chart:'<path d="M4 19.5h16M7.5 19.5v-5M12 19.5v-9M16.5 19.5V7"/>',
+ chair:'<path d="M7 11.5V5.5A1.5 1.5 0 0 1 8.5 4h7A1.5 1.5 0 0 1 17 5.5v6M5.5 11.5h13a1 1 0 0 1 1 1v2.5h-15v-2.5a1 1 0 0 1 1-1zM7.5 15v5M16.5 15v5"/>',
+ monitor:'<rect x="3.5" y="4.5" width="17" height="11" rx="2"/><path d="M9 20h6M12 15.5V20"/>',
+ play:'<path d="M9 7l8 5-8 5z" fill="currentColor" stroke="none"/>',
+ docf:'<path d="M7 3h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM14 3v4.5h4.5M9.5 12.5h5M9.5 16h5"/>',
+ bell:'<path d="M6 16v-5a6 6 0 0 1 12 0v5l1.6 2.2H4.4zM10.3 20.5a1.8 1.8 0 0 0 3.4 0"/>',
+ bellOff:'<path d="M8.5 5.2A6 6 0 0 1 18 11v4M6 11v5l-1.6 2.2H16M10.3 20.5a1.8 1.8 0 0 0 3.4 0M3.5 3.5l17 17"/>',
+ search:'<circle cx="11" cy="11" r="6"/><path d="M15.6 15.6 20 20"/>',
+ flame:'<path d="M12 21.5a7 7 0 0 1-7-7c0-2.4 1.1-4.3 2.4-5.6.3 1.7 1.2 3 2.6 3.6C9.3 8.6 10.6 5 14 2.5c.3 3 1.7 4.9 3.2 6.5A8 8 0 0 1 19 14.5a7 7 0 0 1-7 7z"/>',
+ flameFill:'<path d="M12 21.5a7 7 0 0 1-7-7c0-2.4 1.1-4.3 2.4-5.6.3 1.7 1.2 3 2.6 3.6C9.3 8.6 10.6 5 14 2.5c.3 3 1.7 4.9 3.2 6.5A8 8 0 0 1 19 14.5a7 7 0 0 1-7 7z" fill="currentColor"/><path d="M12 19.2a3 3 0 0 1-3-3c0-1.6 1.2-2.6 2.2-3.6.2 1 .8 1.6 1.5 1.9.4-.9 1-1.5 1.7-2 .5 1 1.6 2 1.6 3.7a3 3 0 0 1-3 3z" fill="#FFE29A" stroke="none"/>',
+ medal:'<circle cx="12" cy="9" r="4.6"/><path d="M9.6 13 8.2 20l3.8-2.2L15.8 20 14.4 13"/>',
+ star:'<path d="M12 4l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 16.4l-4.8 2.5.9-5.4L4.2 9.7l5.4-.8z" fill="currentColor"/>',
+ phone:'<path d="M5.5 4h2.8l1.4 3.8-1.9 1.4a11.5 11.5 0 0 0 4.9 4.9l1.4-1.9L18 13.6v2.9A1.9 1.9 0 0 1 16 18.4 13.4 13.4 0 0 1 3.5 5.9 1.9 1.9 0 0 1 5.5 4z"/>',
+ calendar:'<rect x="4" y="5.5" width="16" height="14.5" rx="2"/><path d="M4 10h16M8 3.5v4M16 3.5v4"/>',
+ chev:'<path d="M9.5 6.5l5.5 5.5-5.5 5.5"/>',
+ back:'<path d="M14.5 6 9 12l5.5 6"/>',
+ plus:'<path d="M12 5.5v13M5.5 12h13"/>',
+ thumb:'<path d="M7.5 11v9M7.5 12l3.8-7.2a1.7 1.7 0 0 1 3.2 1L13.6 10h4.3a1.6 1.6 0 0 1 1.5 2.1l-1.9 6.2a2 2 0 0 1-1.9 1.4H7.5"/>',
+ roll:'<rect x="4" y="9" width="16" height="6.5" rx="3.25"/><circle cx="7.3" cy="12.2" r="1.3"/>',
+ book:'<path d="M5 4.5h10.5A2.5 2.5 0 0 1 18 7v12.5H7A2 2 0 0 1 5 17.5zM5 17.5A2 2 0 0 1 7 15.5h11"/>',
+ question:'<circle cx="12" cy="12" r="8.5"/><path d="M9.8 9.5a2.3 2.3 0 1 1 3.3 2.1c-.8.4-1.1 1-1.1 1.9M12 16.6v.2"/>',
+ shield:'<path d="M12 3.5 19 6v5.5c0 4.3-3 7.6-7 9-4-1.4-7-4.7-7-9V6z"/><path d="M9 12l2.2 2.2L15.2 10"/>',
+ trendDown:'<path d="M4 7l6 6 3.5-3.5L20 16M20 11v5h-5"/>',
+ trendUp:'<path d="M4 17l6-6 3.5 3.5L20 8M20 13V8h-5"/>',
+ alertTri:'<path d="M12 4 21 19.5H3z"/><path d="M12 10v4.2M12 17v.2"/>',
+ camera:'<path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.3l1.5-2.5h5.4L16.2 7h2.3A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.8" r="3.4"/>',
+ cameraOff:'<path d="M9.3 4.5h5.4L16.2 7h2.3A1.5 1.5 0 0 1 20 8.5v8M17 19H5.5A1.5 1.5 0 0 1 4 17.5v-9A1.5 1.5 0 0 1 5.5 7M3.5 3.5l17 17"/>',
+ wifiOff:'<path d="M3.5 3.5l17 17M8.6 13.4a5 5 0 0 1 6.8 0M5.2 10a10 10 0 0 1 4.1-2.3M14.7 7.7A10 10 0 0 1 18.8 10M12 17.6v.2"/>',
+ refresh:'<path d="M19 12a7 7 0 1 1-2.1-5M19 4.5V8h-3.5"/>',
+ faceid:'<path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M9 9.5v1M15 9.5v1M12 9.5v3.5h-1M9.5 15.5a3.5 3.5 0 0 0 5 0"/>',
+ share:'<path d="M12 4v11M8 7.5 12 4l4 3.5M6 12v6.5a1.5 1.5 0 0 0 1.5 1.5h9a1.5 1.5 0 0 0 1.5-1.5V12"/>',
+ userPlus:'<circle cx="10" cy="8.5" r="3.4"/><path d="M4 19.5c.4-3.3 2.8-5.2 6-5.2 1.3 0 2.5.3 3.4.9M18 13.5v6M15 16.5h6"/>',
+ cloud:'<path d="M7 18.5a4 4 0 0 1-.6-8A5.5 5.5 0 0 1 17 9.2a4.2 4.2 0 0 1 .5 8.3z"/>',
+ sliders:'<path d="M5 7h14M5 17h14"/><circle cx="9" cy="7" r="2" fill="#fff"/><circle cx="15" cy="17" r="2" fill="#fff"/>',
+ mapPin:'<path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/>',
+ stand:'<circle cx="12" cy="4.8" r="2.1"/><path d="M12 7.5v7M12 14.5l-2.5 6M12 14.5l2.5 6M8.5 10.5h7"/>',
+ sit:'<circle cx="9" cy="4.8" r="2.1"/><path d="M9.5 7.5l.5 6h5l1.5 6.5M10 13.5l-3 6.5M6 11h7"/>',
+ leaf:'<path d="M5 19c0-8 5-14 15-14 0 10-6 15-14 15M5 19l7-7"/>',
+ chinTuck:'<circle cx="13.5" cy="7.6" r="3.6"/><path d="M13.2 11.2v3.6M7.5 20.5c.5-3.2 2.7-5.2 5.7-5.2s5.2 2 5.7 5.2M8.6 7.6H3.8M5.6 5.8 3.8 7.6l1.8 1.8"/>',
+ sidePlank:'<circle cx="18.6" cy="6.2" r="2"/><path d="M17 7.8 5 17.6M12.6 11.5V19.5M12.6 11.5 14.2 4M3 19.5h18"/>',
+ catCow:'<circle cx="19.8" cy="11.8" r="1.9"/><path d="M5.2 12.6Q11.2 4.6 17.8 11.4M6.4 12.2 5.6 19.5M16.4 11 17.2 19.5M3 19.5h18"/>',
+ info:'<circle cx="12" cy="12" r="8.5"/><path d="M12 11.2v5M12 7.9v.2"/>',
+ lock:'<rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5M12 14.5v2"/>',
+};
+const icn=(n,sz=20,sw=2)=>`<svg class="icn" width="${sz}" height="${sz}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]||""}</svg>`;
+
+/* Mini Me's voice: one short line that reacts to today's state */
+function mmSays(){
+  const done=planDone(), sc=posture();
+  if(S.offline) return "I’ll remember everything until we’re back online.";
+  if(done===3) return "We did it! Same time tomorrow?";
+  if(S.todayCheckins===0) return "Stand up with me? It’s been almost an hour.";
+  if(Object.keys(S.stretchesDone).length<3) return "Nice check-in. Stretch with me next?";
+  return sc>=70? "Look how tall we are today!" : "One more lesson and today’s done.";
+}
+
+/* ---------------- shared bits ---------------- */
+function dial(score){
+  const b=band(score);
+  return `<div class="dial" style="--deg:${score*3.6}deg;--c:${b.c}" role="img" aria-label="Score ${score} out of 100, ${b.w}">
+    <div class="in"><span class="display">${score}</span><span class="caption">out of 100</span></div></div>`;
+}
+const bandPill=v=>{ const b=band(v); return `<span class="bandpill ${b.k}">${icn(b.i,16,2.4)} ${b.w}</span>`; };
+const bar=(n,v)=>{ const b=band(v); return `<div class="bar"><span class="lab">${n}</span><div class="track"><i style="--v:${v}%;--c:${b.c}"></i></div><span class="val ${b.t}">${v}</span></div>`; };
+const ring=(p,label)=>{ const r=18, c=2*Math.PI*r; return `<div class="ring" aria-hidden="true"><svg width="44" height="44" viewBox="0 0 44 44"><circle cx="22" cy="22" r="${r}" fill="none" stroke="var(--fill)" stroke-width="5"/>
+  <circle cx="22" cy="22" r="${r}" fill="none" stroke="url(#sunring)" stroke-width="5" stroke-linecap="round" stroke-dasharray="${(c*p).toFixed(1)} ${c.toFixed(1)}"/>
+  <defs><linearGradient id="sunring"><stop offset="0" stop-color="#FF6A3D"/><stop offset="1" stop-color="#FFC24F"/></linearGradient></defs></svg><b>${label}</b></div>`; };
+/* section header with a progress ring: the progress sits beside the list it measures (proximity) */
+const ringHead=(n,total,title,sub)=>`<div class="section-h"><div class="plan-h">${ring(n/total,n>=total?"✓":`${n}/${total}`)}<div><span class="serif">${title}</span><div class="caption">${sub}</div></div></div></div>`;
+/* a person's avatar is their Mini Me, cropped to the face; colour and posture follow their score */
+const MM_OF={Amelia:88,Jermain:72,Kena:58};
+const mmAva=(score,c,label,sz=44)=>{ const m=Math.round(sz*1.45), top=Math.round(sz/2-m*1.23*.4);
+  return `<div class="ava mm ${c}" role="img" aria-label="${label}" style="width:${sz}px;height:${sz}px;--mt:${top}px">${mascot(m,score,[],{anim:false})}</div>`; };
+const scoreBadge=v=>`<span class="scorebadge ${band(v).k}">${v}</span>`;
+
+/* ---------------- navigation ---------------- */
+const TAB_OF={home:"home",checkin:"checkin",scan:"scan",painEdit:"scan",progress:"scan",report:"scan",setup:"scan",setupScore:"scan",reco:"scan",learn:"learn",module:"learn",friends:"friends"};
+const DARK_TOP={login:1,home:1};
+function go(name){ if(S.screen!==name) NAV.push(S.screen); S.screen=name; render("push"); }
+function goTab(name){ NAV=[]; const same=S.screen===name; S.screen=name; render(same?null:"tab"); }
+function back(fallback){ S.screen = NAV.pop() || fallback || "home"; render("pop"); }
+function tabbar(){
+  const active=TAB_OF[S.screen], tb=$("tabbar");
+  $("phone").classList.toggle("has-tabs",!!active);
+  if(!active){ tb.hidden=true; return; }
+  tb.hidden=false;
+  const t=(id,label)=>`<button class="tab ${active===id?"on":""}" onclick="goTab('${id}')" aria-current="${active===id?"page":"false"}">${icn(id,24,active===id?2.3:1.8)}${label}</button>`;
+  tb.innerHTML=t("home","Home")+t("scan","Scan")+
+   `<div class="fabwrap"><button class="fab ${active==="checkin"?"on":""}" onclick="goTab('checkin')" aria-label="Hourly check-in">${icn("check",30,2.8)}</button><span class="fablabel">Check-in</span></div>`+
+   t("learn","Learn")+t("friends","Friends");
+}
+function render(dir){
+  const scr=$("screen"); const html=V[S.screen](); tabbar();
+  const cur=scr.querySelector(".view:not(.leaving)");
+  if(!cur || !dir){
+    if(cur){ const st=cur.scrollTop; cur.innerHTML=html; cur.scrollTop=st; }
+    else scr.innerHTML=`<div class="view">${html}</div>`;
+    return afterRender();
+  }
+  scr.querySelectorAll(".view.leaving").forEach(v=>v.remove());
+  const nv=document.createElement("div"); nv.className="view"; nv.innerHTML=html;
+  if(REDUCED()){ cur.remove(); scr.appendChild(nv); return afterRender(); }
+  nv.classList.add("enter-"+dir); cur.classList.add("leaving","leave-"+dir);
+  dir==="pop"? scr.insertBefore(nv,cur) : scr.appendChild(nv);
+  let finished=false;
+  const done=()=>{ if(finished) return; finished=true; cur.remove(); nv.classList.remove("enter-"+dir); };
+  nv.addEventListener("animationend",e=>{ if(e.target===nv) done(); }); setTimeout(done,520);
+  afterRender();
+}
+function afterRender(){ if(S.screen==="home") S.homeIntro=false; syncStatus(); }
+/* white status text while a dark sky is behind it; frosted paper once the sky has scrolled away */
+function syncStatus(){
+  const v=$("screen").querySelector(".view:not(.leaving)"), sky=v&&v.querySelector(".skyhead,.welcome");
+  $("statusbar").classList.toggle("dark",!!DARK_TOP[S.screen] && (!sky || v.scrollTop < sky.offsetTop+sky.offsetHeight-54));
+  $("statusbar").classList.toggle("dim",!!v && v.scrollTop>8);
+}
+$("screen").addEventListener("scroll",syncStatus,true);
+function head(title,{back:fb,help:helpText,sub,large,eyebrow}={}){
+  return `<div class="nav ${large?"":"compact"}">
+    ${fb!==undefined&&fb!==false?`<button class="iconbtn" onclick="back('${fb}')" aria-label="Back">${icn("back",22,2.2)}</button>`:""}
+    <div class="grow">${eyebrow?`<div class="eyebrow">${eyebrow}</div>`:""}<h1 class="${large?"title-lg":"title"}">${title}</h1>${sub?`<div class="sub footnote">${sub}</div>`:""}</div>
+    ${helpText?`<button class="iconbtn plain" onclick="help(${JSON.stringify(helpText).replace(/"/g,"&quot;")})" aria-label="About this screen">${icn("question",24)}</button>`:""}
+  </div>`;
+}
+const steps=(n,label)=>`<div class="steps" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="${n}">${[1,2,3].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</div><div class="caption stepcap">Step ${n} of 3 · ${label}</div>`;
+
+/* ---------------- data loading ---------------- */
+const PENDING={};
+function ready(key,ms=750){
+  if(S.loaded[key]) return "ok";
+  if(S.failed[key]) return "err";
+  if(!PENDING[key]){
+    const at=S.screen;
+    PENDING[key]=setTimeout(()=>{ delete PENDING[key];
+      if(S.offline) S.failed[key]=true; else S.loaded[key]=true;
+      if(S.screen===at) render();
+    },ms);
+  }
+  return "load";
+}
+function retry(key){ delete S.failed[key]; island("refresh","Reconnecting…",800); render(); }
+const skelRows=n=>`<div class="group" aria-busy="true" aria-label="Loading">${Array.from({length:n},()=>`<div class="item"><div class="skel sq"></div><div class="grow"><div class="skel l1"></div><div class="skel l2"></div></div><div class="skel pill"></div></div>`).join("")}</div>`;
+const errorState=(key,what)=>`<div class="card flat"><div class="state err">
+  <div class="badge">${icn("wifiOff",32)}</div><div class="title">Couldn’t load ${what}</div>
+  <div class="footnote">You’re offline. Everything you logged is safe on this phone. Reconnect and try again.</div>
+  <button class="btn primary sm" onclick="retry('${key}')">${icn("refresh",18)} Try again</button></div></div>`;
+const emptyState=(art,title,text,btn)=>`<div class="card"><div class="state">
+  ${art.startsWith("<")?`<div class="art">${art}</div>`:`<div class="badge">${icn(art,32)}</div>`}
+  <div class="title">${title}</div><div class="footnote">${text}</div>${btn||""}</div></div>`;
+const offlineBanner=()=>S.offline?`<div class="offline" role="status">${icn("wifiOff",18)} Offline · showing what’s saved on this phone</div>`:"";
+
+/* ---------------- chrome ---------------- */
+let toastTimer;
+function toast(msg,{undo,icon}={}){
+  const t=$("toast");
+  t.innerHTML=(icon?`<span class="ticon">${icn(icon,16,2.4)}</span>`:"")+`<span>${msg}</span>`+(undo?`<button class="undo" onclick="${undo}">Undo</button>`:"");
+  t.classList.toggle("low",$("tabbar").hidden);
+  t.classList.toggle("lift",!!$("screen").querySelector(".view:not(.leaving) > .ctabar"));
+  t.classList.add("show"); clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove("show"), undo?5200:2600);
+}
+let lastFocus=null;
+function sheet(html){
+  if(!$("scrim").classList.contains("show")) lastFocus=document.activeElement;
+  $("sheet").innerHTML=`<div class="grab"></div>`+html;
+  $("scrim").classList.add("show");
+  const f=$("sheet").querySelector("button, input"); if(f) f.focus({preventScroll:true});
+}
+function closeSheet(){ $("scrim").classList.remove("show"); if(lastFocus&&lastFocus.focus) lastFocus.focus({preventScroll:true}); }
+function help(text){ sheet(`<div class="hero-ico ico sky">${icn("question",28)}</div><div class="title">About this screen</div><p>${text}</p><button class="btn primary" onclick="closeSheet()">Got it</button>`); }
+$("scrim").addEventListener("click",e=>{ if(e.target.id==="scrim") closeSheet(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape"){ closeSheet(); hideNotif(); } });
+let sysCb={};
+function sysAlert(title,msg,buttons){
+  sysCb={};
+  $("sysbox").innerHTML=`<div class="msg"><b>${title}</b><p>${msg}</p></div><div class="acts">${buttons.map((b,i)=>{ sysCb[i]=b.do; return `<button class="${b.pri?"pri":""}" onclick="sysDone(${i})">${b.label}</button>`; }).join("")}</div>`;
+  $("sysalert").classList.add("show"); $("sysbox").querySelector(".pri")?.focus({preventScroll:true});
+}
+function sysDone(i){ $("sysalert").classList.remove("show"); const f=sysCb[i]; if(f) f(); }
+let islandTimer;
+function island(icon,text,ms=1200){
+  const el=$("island"); $("islandLive").innerHTML=`${icon==="dot"?'<span class="dot"></span>':icn(icon,16)}<span>${text}</span>`;
+  el.classList.add("on"); $("statusbar").classList.add("island-on"); clearTimeout(islandTimer);
+  islandTimer=setTimeout(()=>{ el.classList.remove("on"); $("statusbar").classList.remove("island-on"); },ms);
+}
+function showNotif(){ if(S.notifs===false){ toast("Nudges are off. Turn them on from Home",{icon:"bellOff"}); return; } $("notif").classList.add("show"); }
+function hideNotif(){ $("notif").classList.remove("show"); }
+function notifCheckin(){ hideNotif(); if(TAB_OF[S.screen]) goTab("checkin"); else toast("Finish setting up first, then check in"); }
+
+/* ---------------- screens ---------------- */
+const V={};
+
+/* ---- log in ---- */
+V.login=()=>`<div class="pad">
+  <div class="welcome night">
+    <div class="wordmark">Poshture</div>
+    ${mascot(150,90,[])}
+    <h1 class="title-lg">Sit better.<br>Feel better.</h1>
+    <p class="body">Meet Mini Me. It stands taller every time you do.</p>
+  </div>
+  <label class="lbl" for="em">SMU email</label>
+  <input class="field" id="em" type="email" value="gene.lim.2024@smu.edu.sg" autocomplete="email">
+  <label class="lbl" for="pw">Password</label>
+  <input class="field ${S.pwErr?"err":""}" id="pw" type="password" placeholder="Your password" autocomplete="current-password" aria-invalid="${!!S.pwErr}" aria-describedby="pwErr">
+  ${S.pwErr?`<div class="fielderr" id="pwErr">${icn("alertTri",16)} Enter your password, or use Face ID.</div>`:""}
+  <div class="forgot"><button class="link ink" onclick="forgotPw()">Forgot password?</button></div>
+  <div class="row"><button class="btn primary" onclick="login()">Log in</button>
+  <button class="iconbtn lg" onclick="faceId()" aria-label="Log in with Face ID">${icn("faceid",26)}</button></div>
+  <div class="altline">New here? <button class="link" onclick="startOnboarding()">Create an account</button></div>
+</div>`;
+function login(){ const pw=$("pw").value.trim(); if(!pw){ S.pwErr=true; render(); $("pw").focus(); return; } S.pwErr=false; enterApp(); }
+function faceId(){ island("faceid","Face ID",900); setTimeout(enterApp,850); }
+function enterApp(){ NAV=[]; S.homeIntro=true; S.screen="home"; render("tab"); }
+function forgotPw(){
+  sheet(`<div class="hero-ico ico sky">${icn("lock",28)}</div><div class="title">Reset your password</div><p>We’ll email a reset link to your SMU address. It expires in 30 minutes.</p>
+  <input class="field" type="email" value="gene.lim.2024@smu.edu.sg" aria-label="Email">
+  <div class="gap-4"></div>
+  <button class="btn primary" onclick="closeSheet();toast('Reset link sent to your SMU inbox',{icon:'check'})">Send reset link</button>`);
+}
+
+/* ---- onboarding 1: pain areas ---- */
+const SPOTS=["Neck","Shoulder","Back","Hips","Wrists","Legs"];
+const spot=n=>{ const on=S.pendingPains.includes(n);
+  return `<button class="spot spot-${n.toLowerCase()}" aria-pressed="${on}" onclick="togglePain('${n}')">${on?icn("mapPin",16,2.4):""}${n}</button>`; };
+V.obPain=()=>{ const p=S.pendingPains; return `<div class="pad fill">
+  ${head("Where does it hurt?",{back:"login",help:"Tap every area that regularly aches after long sitting. You can change these any time from the Scan tab.",sub:"Tap every area that aches after sitting"})}
+  ${steps(1,"Pain areas")}
+  <div class="bodymap"><div class="bm">${mascot(262,46,p)}${SPOTS.map(spot).join("")}</div></div>
+</div>
+<div class="ctabar"><button class="btn primary" ${p.length?"":"disabled"} onclick="obToScan()">${p.length?`Continue with ${p.length} area${p.length>1?"s":""}`:"Select at least one area"}</button></div>`;};
+function togglePain(n){ const p=S.pendingPains; p.includes(n)? S.pendingPains=p.filter(x=>x!==n) : p.push(n); render(); }
+function startOnboarding(){
+  const keep={offline:S.offline}; S=seedReturning(); Object.assign(S,keep,{user:"new",streak:0,points:0,week:[0,0,0,0,0,0],history:[],follows:{},
+    pendingPains:["Neck","Back"],scanAngle:0,flags:[]});
+  NAV=[]; go("obPain");
+}
+function obToScan(){ S.pains=[...S.pendingPains]; go("obScan"); }
+function finishOnboarding(){ NAV=[]; S.homeIntro=true; S.screen="home"; render("tab"); if(S.notifs===null) setTimeout(notifPrompt,600); }
+function notifPrompt(){
+  sheet(`<div class="hero-ico ico sun">${icn("bell",28)}</div><div class="title">A nudge each hour you sit?</div>
+  <p>Mini Me taps you after 60 minutes of sitting, never during quiet hours (10 pm – 8 am). One tap opens your check-in.</p>
+  <button class="btn primary" onclick="closeSheet();askNotifs()">Turn on hourly nudges</button>
+  <button class="btn ghost" onclick="closeSheet();S.notifs=false;render();toast('No nudges. You can turn them on from Home',{icon:'bellOff'})">Not now</button>`);
+}
+function askNotifs(){
+  sysAlert("“Poshture” Would Like to Send You Notifications","Notifications may include alerts, sounds and icon badges.",
+   [{label:"Don’t Allow",do:()=>{S.notifs=false;render();toast("Nudges are off",{icon:"bellOff"});}},
+    {label:"Allow",pri:true,do:()=>{S.notifs=true;render();toast("Hourly nudges on · quiet 10 pm – 8 am",{icon:"bell"});}}]);
+}
+
+/* ---- onboarding 2: scan ---- */
+const SIL_FRONT="M50 4C57 4 62 9 62 16C62 22 59 26 56 29L56 33C67 35 74 40 76 49L80 79C81 85 74 87 72 82L67 55L67 56C68 70 67 84 66 94C68 102 68 108 66 114L64 152L65 184C65 190 56 190 56 184L55 152L52 120L49 152L48 184C48 190 39 190 39 184L40 152L38 114C36 108 36 102 38 94C37 84 36 70 37 56L37 55L32 82C30 87 23 85 24 79L28 49C30 40 37 35 48 33L48 29C45 26 42 22 42 16C42 9 47 4 50 4Z";
+const SIL_SIDE="M56 5C63 6 67 12 66 19C65 24 63 27 60 29L59 33C65 35 68 40 69 47L70 60C73 62 74 66 72 69C70 71 67 69 66 66L65 64L64 92C66 100 65 108 63 114L62 150L65 184C65 190 56 191 55 185L53 150L52 120L51 150L52 184C52 190 43 190 43 184L45 150L44 112C42 106 42 98 44 92L44 56C44 46 48 38 54 34L54 30C50 28 48 24 48 18C48 11 51 5 56 5Z";
+const SILS=[SIL_FRONT,SIL_SIDE,SIL_FRONT];
+const stance=i=>`<svg viewBox="0 0 100 200" width="10" height="20" aria-hidden="true"><path d="${SILS[i]}" fill="currentColor"/></svg>`;
+function silGuide(a){ const d=SILS[Math.min(a,2)];
+  return `<svg class="silguide" viewBox="-4 -10 108 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <path d="${d}" fill="none" stroke="rgba(255,180,110,.25)" stroke-width="6" stroke-linejoin="round"/>
+    <path d="${d}" fill="rgba(255,180,110,.08)" stroke="rgba(255,205,150,.95)" stroke-width="1.5" stroke-dasharray="5 4"/></svg>`; }
+function cameraGate(short){
+  if(S.cam==="denied") return `<div class="viewport ${short?"short gated":""}"><div class="vp-msg">
+    <div class="badge">${icn("cameraOff",30)}</div><div class="headline">Camera is off for Poshture</div>
+    <div class="footnote">Turn it on in Settings › Poshture › Camera, then come back.</div>
+    <button class="btn glass sm" onclick="openSettings()">Open Settings</button></div></div>`;
+  if(!S.cam) return `<div class="viewport ${short?"short gated":""}"><div class="vp-msg">
+    <div class="badge">${icn("camera",30)}</div><div class="headline">${short?"Mini Me needs your camera to see your desk":"Mini Me needs your camera to see your posture"}</div>
+    <div class="footnote">Photos are analysed on this phone and then deleted. Only your score is saved.</div>
+    <button class="btn sun sm" onclick="askCamera()">Allow camera</button></div></div>`;
+  return null;
+}
+function askCamera(){
+  sysAlert("“Poshture” Would Like to Access the Camera","Used to rate your posture and desk set-up. Photos never leave your phone.",
+   [{label:"Don’t Allow",do:()=>{S.cam="denied";render();}},{label:"Allow",pri:true,do:()=>{S.cam="ok";render();toast("Camera on · stand inside the outline",{icon:"camera"});}}]);
+}
+function openSettings(){ toast("Opening Settings… (simulated: camera now allowed)"); setTimeout(()=>{S.cam="ok";render();},900); }
+V.obScan=()=>{ const a=S.scanAngle, gate=cameraGate(); return `<div class="pad">
+  ${head("Posture scan",{back:"obPain",help:"Stand fully inside the outline. We capture three angles (front, side and back) for an accurate rating.",sub:`Angle ${Math.min(a+1,3)} of 3`})}
+  ${steps(2,"Scan")}
+  <div class="angles">${["Front","Side","Back"].map((n,i)=>`<span class="chip ${i<a?"done":i===a?"now":""}">${i<a?icn("check",16,2.6):stance(i)} ${n}</span>`).join("")}</div>
+  ${gate||`<div class="viewport">${silGuide(a)}<div class="scanline"></div>
+    <div class="vp-msg bottom"><div class="headline">${["Face the camera","Turn to your side","Turn around"][Math.min(a,2)]}</div><div class="footnote">Fit your whole body inside the outline</div></div></div>`}
+  <button class="btn primary" id="capBtn" ${gate?"disabled":""} onclick="capture()">${icn("camera",22)} Capture angle ${Math.min(a+1,3)}</button>
+  <div class="gap-2"></div>
+  <button class="btn ghost" onclick="cancelScan()">Cancel scan</button>
+</div>`;};
+function capture(){
+  const btn=$("capBtn"); btn.disabled=true; btn.innerHTML=`<span class="spin-sm"></span> Hold still…`;
+  island("dot",`Scanning angle ${S.scanAngle+1} of 3`,1000);
+  setTimeout(()=>{
+    if(S.scanFailArmed){ S.scanFailArmed=false; render(); scanFailSheet(); return; }
+    S.scanAngle++;
+    if(S.scanAngle>=3){ island("checkCircle","Scan complete",1200); setTimeout(()=>go("obRating"),500); }
+    else { toast(`Angle ${S.scanAngle} saved`,{icon:"check"}); render(); }
+  },1000);
+}
+function scanFailSheet(){
+  sheet(`<div class="hero-ico ico alert">${icn("alertTri",28)}</div><div class="title">We couldn’t read that angle</div>
+  <p>The room is too dark to find your outline. Move near a window or switch on a light, then retake. Your ${S.scanAngle} saved angle${S.scanAngle===1?" is":"s are"} kept.</p>
+  <button class="btn primary" onclick="closeSheet()">Retake this angle</button>`);
+}
+function cancelScan(){
+  sheet(`<div class="title">Stop scanning?</div><p>Your ${S.scanAngle} captured angle${S.scanAngle===1?"":"s"} will be kept, so you can finish later.</p>
+  <div class="row"><button class="btn quiet" onclick="closeSheet()">Keep scanning</button>
+  <button class="btn danger" onclick="closeSheet();back('obPain')">Stop for now</button></div>`);
+}
+
+/* ---- onboarding 3: rating ---- */
+V.obRating=()=>{ const sc=S.demoScore||48, good=sc>=70, b=band(sc);
+  const bars = good? bar("Neck",78)+bar("Back",84)+bar("Hips",88) : bar("Neck",35)+bar("Back",54)+bar("Hips",78);
+  return `<div class="pad">
+  ${head("Your posture rating",{back:"obScan",help:"We combine your three angles with the pain areas you chose. A low score isn’t bad news. It’s your starting line."})}
+  ${steps(3,"Rating")}
+  <div class="card">
+    <div class="meet">
+      ${mascot(150,sc,S.pains)}
+      <div class="grow">
+        <div class="eyebrow">Meet your Mini Me</div>
+        <div class="display ${b.t}">${sc}</div>
+        <div class="band footnote strong ${b.t}">${icn(b.i,16,2.4)} ${b.w}</div>
+        <div class="footnote gap-top">${good?"Standing tall already. Let’s keep it that way.":"A little slouchy today. It straightens up as you do."}</div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    ${bars}
+    <div class="footnote gap-top">${good?"No deductions worth worrying about. Alignment is healthy across all three angles.":"Deductions: forward head tilt (−20), rounded shoulders (−12), uneven hips (−8). Your hips look great."}</div>
+    <button class="link ink" onclick="ratingInfo(${sc})">What does this score mean? ${icn("chev",16)}</button>
+  </div>
+  <div class="gap-3"></div>
+  ${good?`<div class="card tint-sprout tight"><div class="callout"><span class="t-sprout">${icn("checkCircle",24)}</span><div class="grow">
+    <div class="headline">Looking strong</div><p class="footnote">No red flags. Daily stretches and hourly stand-ups will keep you here.</p></div></div></div>`
+  :`<div class="card tint-alert tight"><div class="callout"><span class="t-alert">${icn("alertTri",24)}</span><div class="grow">
+    <div class="headline">Your neck needs attention first</div><p class="footnote">It scored 35 across all three angles. A 30-second check makes sure this is posture strain, not something a doctor should see.</p></div></div></div>`}
+  <div class="caption center gap-top">Estimate from your photos. Not a medical diagnosis.</div>
+</div>
+<div class="ctabar">${good?`<button class="btn primary" onclick="saveFirstScan(${sc});finishOnboarding()">Continue to home</button>`
+  :`<button class="btn primary" onclick="saveFirstScan(${sc});S.flags=[];go('obTriage')">${icn("shield",20)} Start the safety check</button>
+  <div class="links"><button class="link ink" onclick="S.scanAngle=0;back('obScan')">Re-scan</button><button class="link ink" onclick="notNow(${sc})">Remind me tomorrow</button></div>`}</div>`;};
+function saveFirstScan(sc){ if(S.user==="new") S.history=[{d:short(new Date()),v:sc}]; }
+function notNow(sc){ saveFirstScan(sc); toast("We’ll remind you tomorrow at 9 am",{icon:"bell"}); finishOnboarding(); }
+function ratingInfo(sc){
+  const b=band(sc);
+  sheet(`<div class="title">How to read your rating</div><div class="gap-2"></div>
+  <div class="group flat">${[[85,"70–100","Healthy · Mini Me stands tall and blooms"],[60,"50–69","Fair · strain worth working on"],[40,"0–49","Needs attention now"]].map(([v,r,w])=>`<div class="item">${scoreBadge(v)}<div class="grow"><span class="strong">${r}</span><span class="footnote">${w}</span></div></div>`).join("")}</div>
+  <div class="gap-3"></div>
+  <p>Your ${sc} is <b>${b.w.toLowerCase()}</b>${sc<70?", driven mainly by your neck (35), which matches the forward-head angle in all three captures":""}. It’s an estimate from your photos, not a diagnosis.</p>
+  <button class="btn primary" onclick="closeSheet()">Got it</button>`);
+}
+
+V.obTriage=()=>{ const f=S.flags||[]; return `<div class="pad">
+  ${head("Quick safety check",{back:"obRating",help:"A few symptoms need a doctor rather than an app. This check makes sure we point you to the right care before giving any advice.",sub:"30 seconds · answers stay on this phone"})}
+  <p class="body sec">Tick anything that applies right now. These can feel like sitting pain but need a doctor.</p>
+  <div class="gap-4"></div>
+  <div class="group">${TRIAGE.map((t,i)=>{ const on=f.includes(t);
+    return `<button class="item noicon" role="checkbox" aria-checked="${on}" onclick="toggleFlag(${i})"><span class="check">${on?icn("check",16,3):""}</span><span class="grow body">${t}</span></button>`;}).join("")}</div>
+</div>
+<div class="ctabar">${f.length?`<button class="btn danger" onclick="emergencySheet()">${icn("alertTri",20)} I have ${f.length===1?"this symptom":"these symptoms"}</button>`
+            :`<button class="btn primary" onclick="safetyPassed()">None of these apply</button>`}</div>`;};
+const TRIAGE=["Chest pain or breathlessness","Swelling or pain in one calf","Numbness around the groin or inner thighs","Severe pain that wakes you at night","Fever or unexplained weight loss"];
+function toggleFlag(i){ const t=TRIAGE[i], f=S.flags; f.includes(t)? S.flags=f.filter(x=>x!==t) : f.push(t); render(); }
+function emergencySheet(){
+  sheet(`<div class="hero-ico ico alert">${icn("alertTri",28)}</div><div class="title">Please see a doctor promptly</div>
+  <p>These symptoms can have causes beyond posture: chest pain can involve the heart, a swollen calf a blood clot, groin numbness a trapped nerve. They need a professional, not an app.</p>
+  <button class="btn danger" onclick="closeSheet();S.urgent=true;go('doctors')">See specialists with the earliest slots</button>
+  <button class="btn ghost" onclick="closeSheet()">Back to the checklist</button>
+  <div class="caption center gap-top">In an emergency, call 995.</div>`);
+}
+function safetyPassed(){
+  sheet(`<div class="hero-ico ico sprout">${icn("shield",28)}</div><div class="title">No emergency signs</div>
+  <p>Posture strain is the likely cause. A physio or spine specialist can take a professional look at your neck.</p>
+  <button class="btn primary" onclick="closeSheet();S.urgent=false;go('doctors')">View specialists</button>
+  <button class="btn ghost" onclick="closeSheet();finishOnboarding()">Skip, go to my plan</button>`);
+}
+
+/* ---- doctors + booking ---- */
+const DOCTORS=[
+ {init:"TW",n:"Dr Tan Wei Ming",spec:"Spine specialist",clinic:"Raffles Spine Centre",dist:"1.2 km",next:1,rate:"4.9",c:"sky"},
+ {init:"LP",n:"Lim Physiotherapy",spec:"Physiotherapist",clinic:"Bugis Wellness Hub",dist:"2.0 km",next:1,rate:"4.8",c:"sprout"},
+ {init:"NG",n:"Dr Ng Kai Lun",spec:"Orthopaedic surgeon",clinic:"Mount E Ortho Clinic",dist:"3.4 km",next:2,rate:"4.7",c:"sun"},
+];
+V.doctors=()=>{ const st=ready("doctors"); return `<div class="pad">
+  ${head("Specialists",{back:"obRating",help:"Verified clinics that treat posture-related strain. Book directly; Poshture shares nothing without your consent.",sub:"Near SMU · earliest openings first"})}
+  ${S.urgent?`<div class="card tint-alert tight"><div class="callout"><span class="t-alert">${icn("alertTri",20)}</span><div class="grow footnote"><b class="strong t-alert">Your safety check suggests being seen soon.</b> The earliest slots are shown first.</div></div></div><div class="gap-3"></div>`:""}
+  ${st==="load"? skelRows(3) : st==="err"? errorState("doctors","specialists") : DOCTORS.map(docCard).join('<div class="gap-3"></div>')}
+  <div class="gap-4"></div>
+  <button class="btn ghost" onclick="finishOnboarding()">Continue to home</button>
+</div>`;};
+const docCard=(d,i)=>`<div class="card doccard">
+  <div class="row"><div class="ava ${d.c}">${d.init}</div>
+    <div class="grow"><span class="headline">${d.n}</span><div class="footnote">${d.spec} · ${d.clinic}</div></div></div>
+  <div class="meta footnote"><span class="t-sun">${icn("star",14)}</span><b class="strong">${d.rate}</b><span class="dot-sep"></span>${d.dist}<span class="dot-sep"></span><span class="t-sprout strong">${icn("shield",14,2.2)} Verified</span></div>
+  <div class="spread gap-top"><div><div class="caption">Next opening</div><div class="strong">${fmtDate(addDays(d.next))}</div></div>
+    <div class="row"><button class="iconbtn" onclick="callClinic(${i})" aria-label="Call ${d.clinic}">${icn("phone",20)}</button><button class="pillbtn" onclick="openBooking(${i})">Book</button></div></div>
+</div>`;
+function callClinic(i){ sysAlert(DOCTORS[i].clinic,"+65 6123 45"+(10+i*7),[{label:"Cancel"},{label:"Call",pri:true,do:()=>toast("Calling (simulated in prototype)",{icon:"phone"})}]); }
+function openBooking(i){ S.bookDoc=DOCTORS[i]; S.bookDate=null; S.bookTime=null; go("booking"); }
+function availSet(){ const base=S.urgent?[1,2,3,4,6,8]:[2,4,5,7,9,11]; const first=S.bookDoc?S.bookDoc.next:1; return base.map(o=>Math.max(o,first)); }
+V.booking=()=>{ const d=S.bookDoc||DOCTORS[0];
+  const today=new Date(); const avail=availSet().map(o=>addDays(o).toDateString());
+  const first=new Date(today.getFullYear(),today.getMonth(),1);
+  const dim=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
+  let cells=["S","M","T","W","T","F","S"].map(x=>`<div class="dow">${x}</div>`).join("");
+  for(let b=0;b<first.getDay();b++) cells+=`<div></div>`;
+  for(let day=1;day<=dim;day++){
+    const dt=new Date(today.getFullYear(),today.getMonth(),day), key=dt.toDateString();
+    const isAvail=avail.includes(key), isSel=S.bookDate===key, isToday=key===today.toDateString();
+    cells+=`<button class="day ${isSel?"sel":isAvail?"avail":""} ${isToday?"today":""}" ${isAvail?`onclick="S.bookDate='${key}';S.bookTime=null;render()" aria-label="${fmtDate(dt)}, available"`:`disabled aria-label="${fmtDate(dt)}, unavailable"`}>${day}</button>`;
+  }
+  const slots=["9:00 AM","9:30 AM","10:30 AM","2:00 PM","3:30 PM","5:00 PM"];
+  const taken=S.urgent?["9:00 AM"]:["9:30 AM","3:30 PM"];
+  const ok=S.bookDate&&S.bookTime;
+  return `<div class="pad">
+  ${head("Book appointment",{back:"doctors",help:"Pick an available date, then a time. The clinic confirms by SMS within the hour."})}
+  <div class="card tight"><div class="row"><div class="ava ${d.c}">${d.init}</div><div class="grow"><span class="strong">${d.n}</span><div class="footnote">${d.spec} · ${d.clinic}</div></div></div></div>
+  <div class="section-h"><span class="serif">${MONTHS[today.getMonth()]}</span><span class="chip sun">Next: ${fmtDate(addDays(availSet()[0]))}</span></div>
+  <div class="card tight"><div class="cal">${cells}</div>
+    <div class="gap-2"></div><div class="caption">Highlighted dates have openings. Today is outlined.</div></div>
+  ${S.bookDate?`<div class="section-h"><span class="serif">${fmtDate(new Date(S.bookDate))}</span><span class="caption">${slots.length-taken.length} times free</span></div>
+  <div class="slots">${slots.map(t=>{ const off=taken.includes(t), sel=S.bookTime===t;
+    return `<button class="slot ${sel?"sel":""}" ${off?`disabled aria-label="${t}, taken"`:`onclick="S.bookTime='${t}';render()"`}>${t}</button>`;}).join("")}</div>`:""}
+</div>
+<div class="ctabar"><button class="btn primary" id="bookBtn" ${ok?"":"disabled"} onclick="confirmBooking()">${ok?`Confirm · ${fmtDate(new Date(S.bookDate))}, ${S.bookTime}`:S.bookDate?"Choose a time":"Choose a date"}</button></div>`;};
+function confirmBooking(){
+  const b=$("bookBtn"); b.disabled=true; b.innerHTML=`<span class="spin-sm"></span> Confirming with clinic…`;
+  setTimeout(()=>{
+    if(S.offline){ render(); sheet(`<div class="hero-ico ico alert">${icn("wifiOff",28)}</div><div class="title">Booking not sent</div>
+      <p>You’re offline, so the clinic didn’t receive it. Your date and time are still selected. Reconnect and try again.</p><button class="btn primary" onclick="closeSheet()">OK</button>`); return; }
+    S.bookRef="PX-"+Math.floor(1000+Math.random()*9000); go("bookingDone");
+  },900);
+}
+V.bookingDone=()=>{ const d=S.bookDoc||DOCTORS[0]; return `<div class="pad">
+  <div class="celebrate">${mascot(150,92,[])}
+  <h1 class="title-lg">You’re booked</h1>
+  <p class="body sec gap-top">${d.clinic} will confirm by SMS within the hour. Your pain report is attached to the booking.</p></div>
+  <div class="group">
+    <div class="item"><div class="ava ${d.c}">${d.init}</div><div class="grow"><span class="strong">${d.n}</span><span class="footnote">${d.spec}</span></div></div>
+    ${[["Date",fmtDate(new Date(S.bookDate||new Date()))],["Time",S.bookTime||"—"],["Clinic",d.clinic],["Reference",S.bookRef||"PX-0000"]].map(([k,v])=>`<div class="kv"><span class="footnote">${k}</span><span class="strong">${v}</span></div>`).join("")}
+  </div>
+</div>
+<div class="ctabar"><button class="btn secondary" onclick="addToCalendar()">${icn(S.calAdded?"check":"calendar",20)} ${S.calAdded?"Added to calendar":"Add to calendar"}</button>
+  <button class="btn primary" onclick="S.urgent=false;toast('We’ll remind you the day before',{icon:'bell'});finishOnboarding()">Done</button></div>`;};
+function addToCalendar(){
+  if(S.calAdded){ toast("Already in your calendar"); return; }
+  const add=()=>{ S.calAdded=true; render(); toast("Added to Calendar · alert 1 hour before",{icon:"calendar"}); };
+  if(S.cal==="ok") return add();
+  sysAlert("“Poshture” Would Like to Add Events to Your Calendar","Only appointments you book are added. Poshture can’t read your other events.",
+   [{label:"Don’t Allow",do:()=>{S.cal="denied";toast("Calendar not allowed. The SMS still has your details");}},{label:"Allow",pri:true,do:()=>{S.cal="ok";add();}}]);
+}
+
+/* ---- home ---- */
+V.home=()=>{ const sc=posture(), b=band(sc), last=lastScan(), prev=S.history[S.history.length-2];
+  const delta=prev? last.v-prev.v : null, done=planDone();
+  const toNext=b.next? b.next-sc : 0, prog=b.next? Math.round((sc-(b.next-20))/20*100) : 100;
+  return `<div class="pad ${S.homeIntro?"stagger":""}">
+  <div class="night skyhead">
+    ${offlineBanner()}
+    <div class="nav topbar"><div class="grow"><div class="eyebrow">${greeting()},</div><h1 class="title-lg">Gene</h1></div>
+      <div class="topstats">
+        <span class="statpill" role="img" aria-label="${S.streak}-day streak"><span class="t-flame">${icn("flameFill",18)}</span>${S.streak}</span>
+        <span class="statpill" role="img" aria-label="${S.points} points"><span class="t-gold">${icn("star",16)}</span>${S.points}</span>
+      </div></div>
+    <div class="stage">
+      <div class="grow">
+        <div class="bubble">${mmSays()}</div>
+        <div class="gap-4"></div>
+        <button class="eyebrow infobtn" onclick="help('Mini Me mirrors your posture score from your latest scan, plus a little for every stretch. Finish the three items in today’s plan to keep your streak, and watch it stand taller.')" aria-label="About your posture score">Posture score ${icn("info",15,2.2)}</button>
+        <div class="display">${sc}</div>
+        ${bandPill(sc)}
+      </div>
+      <div class="stage-mm">${mascot(206,sc,[])}</div>
+    </div>
+    <div class="nextband">
+      <div class="spread"><span class="footnote strong">${b.next?`${toNext} pts to ${band(b.next).w}`:"Top band reached"}</span><span class="caption">${delta!==null?`${delta>=0?"+":""}${delta} since ${prev.d}`:"First scan"}</span></div>
+      <div class="meter"><i style="--v:${Math.max(6,Math.min(100,prog))}%"></i></div>
+    </div>
+  </div>
+  ${S.notifs===false?`<div class="gap-3"></div><button class="card item tap tint-sun" onclick="askNotifs()"><span class="ico sun">${icn("bellOff",22)}</span><div class="grow"><span class="strong">Hourly nudges are off</span><span class="footnote">Turn them on so long sitting doesn’t sneak up on you.</span></div><span class="chev">${icn("chev",18)}</span></button>`:""}
+  <div>
+    ${ringHead(done,3,"Today’s plan",done===3?"Streak secured":"Finish all three to keep your streak")}
+    ${todayPlan()}
+  </div>
+  <div>
+    <div class="section-h"><span class="serif">This week</span></div>
+    ${weekCard()}
+  </div>
+  ${S.user==="new"?"":`<div class="gap-3"></div><button class="card item tap" onclick="goTab('friends')"><div class="avstack">${mmAva(MM_OF.Amelia,"rose","Amelia",36)}${mmAva(MM_OF.Jermain,"sky","Jermain",36)}</div>
+    <div class="grow"><span class="strong">Amelia hit a 12-day streak</span><span class="footnote">Jermain finished 4 check-ins today</span></div><span class="chev">${icn("chev",18)}</span></button>`}
+</div>`;};
+function planDone(){ const st=Object.keys(S.stretchesDone).length, le=Object.keys(S.lessonsDone).length; return (S.todayCheckins>0?1:0)+(st>=3?1:0)+(le>0?1:0); }
+/* one focal point: only the next thing to do gets a button; the rest stay quiet */
+function todayPlan(){
+  const st=Object.keys(S.stretchesDone).length, le=Object.keys(S.lessonsDone).length;
+  const items=[
+    [S.todayCheckins>0,"sun","clock","Hourly check-in", S.todayCheckins>0?`${S.todayCheckins} logged · next in about an hour`:"Stand up, rate your pain","goTab('checkin')","Log"],
+    [st>=3,"sprout","stretch","Daily stretches", st>=3?"All 3 done":`${st} of 3 · for your ${S.pains.slice(0,2).join(" & ").toLowerCase()||"body"}`,"S.learnSeg='stretch';goTab('learn')","Start"],
+    [le>0,"sky","bulb","2-minute lesson", le>0?"Completed":"When to stand","S.learnSeg='lessons';goTab('learn')","Watch"]];
+  const next=items.findIndex(x=>!x[0]);
+  return `<div class="group">${items.map(([ok,cat,icon,title,sub,act,cta],i)=>`<button class="item ${ok?"is-done":""}" onclick="${act}">
+    <span class="ico ${ok?"done":cat}">${icn(ok?"check":icon,22,ok?2.8:2)}</span>
+    <span class="grow"><span class="strong">${title}</span><span class="footnote">${sub}</span></span>
+    ${ok?"":i===next?`<span class="pillbtn" aria-hidden="true">${cta}</span>`:`<span class="chev">${icn("chev",18)}</span>`}</button>`).join("")}</div>`;
+}
+function weekCard(){
+  const vals=[...S.week,S.todayCheckins], max=8, goal=6;
+  if(S.user==="new" && S.todayCheckins===0) return emptyState(mascot(110,60,[]),"Your week starts today","Every check-in adds a bar here. Aim for one each hour you’re sitting.");
+  const days=Array.from({length:7},(_,i)=>DOW[addDays(i-6).getDay()].slice(0,1));
+  const hits=vals.filter(v=>v>=goal).length;
+  return `<div class="card"><div class="spread"><div><span class="num title">${vals.reduce((a,b)=>a+b,0)}</span> <span class="footnote">check-ins</span></div><span class="footnote"><b class="strong">${hits} of 7</b> days on goal</span></div>
+  <div class="week" style="--g:${Math.round(goal/max*80)}px" role="img" aria-label="Check-ins over the last 7 days: ${vals.join(", ")}. Goal is 6 a day.">
+    <div class="goal"><span>6 a day</span></div>
+    ${vals.map((v,i)=>`<div class="col ${i===6?"today":v>=goal?"hit":""}"><span class="v">${i===6?v:""}</span><div class="b" style="--h:${Math.round(v/max*80)}px"></div><span class="d">${i===6?"Today":days[i]}</span></div>`).join("")}</div></div>`;
+}
+
+/* ---- check-in ---- */
+const PAINWORDS=["No pain","Minimal","Mild","Mild","Moderate","Moderate","Moderate","Severe","Severe","Very severe","Worst imaginable"];
+const painClass=p=>p==null?"t-ink3":p>=7?"t-alert":p>=4?"t-amber":"t-sprout";
+V.checkin=()=>{ const ok=S.stand&&S.pain!=null; return `<div class="pad">
+  ${offlineBanner()}
+  ${head("Check-in",{large:true,help:"Two quick questions each hour keep your pain chart honest and your streak alive.",sub:"Two questions · about 5 seconds"})}
+  <div class="card">
+    <div class="headline">Did you stand up this hour?</div>
+    <div class="choice" role="group" aria-label="Did you stand up this hour?">
+      ${[["Yes","stand","I stood up"],["No","sit","Still sitting"]].map(([v,ic,l])=>`<button aria-pressed="${S.stand===v}" onclick="S.stand='${v}';render()"><span class="${v==="Yes"?"t-sprout":"t-sun"}">${icn(ic,30)}</span>${l}</button>`).join("")}
+    </div>
+  </div>
+  <div class="gap-3"></div>
+  <div class="card">
+    <div class="headline">How’s the pain right now?</div>
+    <div class="pain" id="painRow">${painRow()}</div>
+    <input class="slider" type="range" min="0" max="10" step="1" value="${S.pain==null?0:S.pain}"
+      aria-label="Pain from 0, no pain, to 10, worst imaginable" aria-valuetext="${S.pain==null?"not rated":S.pain+", "+PAINWORDS[S.pain]}" oninput="setPain(this.value)">
+    <div class="sliderends caption"><span>No pain</span><span>Worst</span></div>
+  </div>
+  <div class="gap-6"></div>
+  <button class="btn ${ok?"sun":"primary"}" id="ciBtn" ${ok?"":"disabled"} onclick="submitCheckin()">${ok?"Save check-in · +5 pts":S.stand?"Rate your pain to save":"Answer both to save"}</button>
+  <div class="section-h"><span class="serif">Today</span><button class="link ink" onclick="remSheet()">${icn("sliders",16)} Reminders</button></div>
+  ${S.log.length? `<div class="group">${S.log.slice().reverse().map(e=>`<div class="item"><span class="logtime">${e.t.replace(" ","&nbsp;")}</span>
+     <span class="grow"><span class="strong">${e.stand==="Yes"?"Stood up":"Stayed seated"}</span><span class="footnote">Pain ${e.p} · ${PAINWORDS[e.p].toLowerCase()}${e.q?" · waiting to sync":""}</span></span>
+     <span class="${e.q?"t-ink3":"t-sprout"}">${icn(e.q?"cloud":"checkCircle",22)}</span></div>`).join("")}</div>`
+   : emptyState("clock","No check-ins yet today","Your first one starts today’s streak and earns 5 points.")}
+</div>`;};
+function painRow(){
+  const p=S.pain;
+  return `${mascot(104,p==null?70:Math.round(92-p*5.7),[],{anim:false})}
+    <div class="grow">${p==null?`<div class="headline">Slide to rate</div><div class="footnote">0 is no pain, 10 is the worst</div>`
+      :`<span class="display ${painClass(p)}">${p}</span><div class="footnote strong">${PAINWORDS[p]}</div>`}</div>`;
+}
+function setPain(v){
+  S.pain=+v; $("painRow").innerHTML=painRow();
+  const b=$("ciBtn"); if(b && S.stand){ b.disabled=false; b.className="btn sun"; b.textContent="Save check-in · +5 pts"; }
+}
+function remSheet(){
+  const f=S.remFreq||"1", q=S.quiet!==false;
+  sheet(`<div class="title">Reminders</div><p>How often should Mini Me nudge you while you’re sitting? Longer than 4 hours defeats the purpose.</p>
+  <div class="seg" role="tablist">${["1","2","3","4"].map(h=>`<button role="tab" aria-selected="${f===h}" onclick="S.remFreq='${h}';remSheet()">Every ${h}h</button>`).join("")}</div>
+  <div class="group flat">
+    <button class="item" onclick="S.quiet=!${q};remSheet()"><span class="ico">${icn("bellOff",20)}</span><span class="grow"><span class="strong">Quiet hours</span><span class="footnote">10 pm – 8 am</span></span><span class="chip ${q?"sprout":""}">${q?"On":"Off"}</span></button>
+    <button class="item" onclick="closeSheet();toast('Nudges paused until 8 am tomorrow',{icon:'bellOff'})"><span class="ico">${icn("clock",20)}</span><span class="grow"><span class="strong">Pause for today</span><span class="footnote">Resumes tomorrow at 8 am</span></span></button>
+  </div>
+  <div class="gap-4"></div>
+  <button class="btn primary" onclick="closeSheet();toast('Nudge every ${f}h · quiet hours ${q?"on":"off"}',{icon:'bell'})">Done</button>`);
+}
+function submitCheckin(){
+  const q=S.offline;
+  S.log.push({t:clockNow(),stand:S.stand,p:S.pain,q}); S.todayCheckins++; S.points+=5;
+  S.stand=null; S.pain=null;
+  toast(q?"Saved on this phone. Syncs when you’re online":"Check-in saved · +5 pts",{undo:"undoCheckin()",icon:q?"cloud":"check"}); render();
+}
+function undoCheckin(){ S.log.pop(); S.todayCheckins=Math.max(0,S.todayCheckins-1); S.points=Math.max(0,S.points-5); toast("Check-in removed"); render(); }
+
+/* ---- scan hub ---- */
+V.scan=()=>{ const last=lastScan(), st=ready("scan"), sc=posture(); return `<div class="pad">
+  ${offlineBanner()}
+  ${head("Scan",{large:true,help:"Re-scan whenever you like. Each result is saved to your history and refreshes Mini Me."})}
+  <div class="herowrap">
+  <div class="card night hero">
+    <div class="hero-top short">
+      <div class="grow">
+        <div class="eyebrow">Last scan · ${last?last.d:"—"}</div>
+        <div class="display">${last?last.v:"–"}</div>
+        ${last?bandPill(last.v):""}
+      </div>
+      <div class="hero-space"></div>
+    </div>
+    <button class="btn sun" onclick="scanSheet()">${icn("scan",22,2.4)} Start a new scan</button>
+  </div>
+  <div class="hero-mm scan">${mascot(170,sc,S.pains)}</div>
+  </div>
+  <div class="section-h"><span class="serif">History</span><button class="link" onclick="go('progress')">See progress ${icn("chev",16,2.4)}</button></div>
+  ${st==="load"? skelRows(3) : st==="err"? errorState("scan","your scan history") :
+    `<div class="group">${S.history.slice().reverse().map((h,i,arr)=>{ const prev=arr[i+1]; const d=prev?h.v-prev.v:null;
+      return `<div class="item">${scoreBadge(h.v)}<span class="grow"><span class="strong">${h.d}</span><span class="footnote">${band(h.v).w}</span></span>
+      ${d===null?`<span class="chip">Baseline</span>`:`<span class="chip ${d>=0?"sprout":"alert"}">${icn(d>=0?"trendUp":"trendDown",14,2.4)} ${d>=0?"+":""}${d}</span>`}</div>`;}).join("")}</div>`}
+  <div class="section-h"><span class="serif">Your records</span></div>
+  <div class="group">
+    <button class="item" onclick="beginPainEdit()"><span class="ico alert">${icn("mapPin",22)}</span><span class="grow"><span class="strong">Pain areas</span><span class="footnote">${S.pains.join(", ")}</span></span><span class="chev">${icn("chev",18)}</span></button>
+    <button class="item" onclick="genReport()"><span class="ico night">${icn("docf",22)}</span><span class="grow"><span class="strong">Doctor-ready report</span><span class="footnote">One page a clinician reads in a minute</span></span><span class="chev">${icn("chev",18)}</span></button>
+  </div>
+</div>`;};
+function scanSheet(){
+  sheet(`<div class="title">New scan</div><p>What would you like Mini Me to look at?</p>
+  <div class="group flat">
+  <button class="item" onclick="closeSheet();S.scanAngle=0;go('obScan')"><span class="ico sun">${stance(0)}</span><span class="grow"><span class="strong">Posture scan</span><span class="footnote">3 angles · updates your score and Mini Me</span></span><span class="chev">${icn("chev",18)}</span></button>
+  <button class="item" onclick="closeSheet();go('setup')"><span class="ico sky">${icn("monitor",22)}</span><span class="grow"><span class="strong">Desk set-up scan</span><span class="footnote">Rates your chair, screen and desk</span></span><span class="chev">${icn("chev",18)}</span></button>
+  </div>`);
+}
+V.painEdit=()=>`<div class="pad fill">
+  ${head("Pain areas",{back:"scan",help:"Your saved areas shape which stretches and lessons you see. Changes ask for confirmation before saving.",sub:"Tap to add or remove"})}
+  <div class="bodymap"><div class="bm">${mascot(262,posture(),S.pendingPains)}${SPOTS.map(spot).join("")}</div></div>
+</div>
+<div class="ctabar"><button class="btn primary" onclick="confirmPain()">Save changes</button></div>`;
+function beginPainEdit(){ S.pendingPains=[...S.pains]; go("painEdit"); }
+function confirmPain(){
+  const same=JSON.stringify([...S.pains].sort())===JSON.stringify([...S.pendingPains].sort());
+  if(same){ toast("Nothing changed. Your areas are the same"); return; }
+  if(!S.pendingPains.length){ toast("Keep at least one area",{icon:"alertTri"}); return; }
+  sheet(`<div class="title">Replace your saved areas?</div><p>New: ${S.pendingPains.join(", ")}. Your stretches and lessons will re-curate around these.</p>
+  <div class="row"><button class="btn quiet" onclick="closeSheet()">Keep old</button><button class="btn primary" onclick="applyPain()">Save</button></div>`);
+}
+function applyPain(){ S.pains=[...S.pendingPains]; closeSheet(); toast("Pain areas saved",{icon:"check"}); back("scan"); }
+
+/* ---- progress + report ---- */
+V.progress=()=>{ const st=ready("progress"); return `<div class="pad">
+  ${head("Progress",{back:"scan",help:"Pain comes from your hourly check-ins (0–10); posture from your scans. Export everything as a doctor-ready PDF before a clinic visit."})}
+  ${S.user==="new"? emptyState(mascot(110,60,[]),"Your trend appears after 3 days","Keep checking in. By day three there’s enough data to show whether your pain is moving.",`<button class="btn primary sm" onclick="goTab('checkin')">Check in now</button>`)
+  : st==="load"? `<div class="skel block"></div><div class="gap-3"></div>${skelRows(2)}` : st==="err"? errorState("progress","your progress") : `
+  <div class="card">
+    <div class="spread"><div><div class="eyebrow">Average pain</div><span class="num title">3.9 → 2.4</span></div><span class="chip sprout">${icn("trendDown",14,2.4)} 38% lower</span></div>
+    <div class="gap-3"></div>
+    <svg viewBox="0 0 300 150" width="100%" role="img" aria-label="Pain from 0 to 10 by week, falling from 3.9 to 2.4 over eight weeks">
+      <defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FF7A3D" stop-opacity=".35"/><stop offset="1" stop-color="#FFB547" stop-opacity="0"/></linearGradient>
+      <linearGradient id="pl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FF6A3D"/><stop offset="1" stop-color="#FFB547"/></linearGradient></defs>
+      ${[0,1,2,3].map(i=>`<line x1="26" x2="290" y1="${20+i*36}" y2="${20+i*36}" stroke="#EFE7DB" stroke-width="1.5"/>`).join("")}
+      <text x="8" y="24" font-size="12" fill="#62677F" font-family="Instrument Sans">10</text>
+      <text x="14" y="132" font-size="12" fill="#62677F" font-family="Instrument Sans">0</text>
+      <path d="M32 82 C55 86 60 92 78 92 S110 88 126 90 S160 102 180 104 S220 107 236 108 S270 113 285 114 L285 128 L32 128 Z" fill="url(#pg)"/>
+      <path d="M32 82 C55 86 60 92 78 92 S110 88 126 90 S160 102 180 104 S220 107 236 108 S270 113 285 114" fill="none" stroke="url(#pl)" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="285" cy="114" r="7" fill="#1C2140" stroke="#fff" stroke-width="3"/>
+      <text x="26" y="148" font-size="12" fill="#62677F" font-family="Instrument Sans">8 weeks ago</text>
+      <text x="290" y="148" font-size="12" fill="#62677F" font-family="Instrument Sans" text-anchor="end">This week</text>
+    </svg>
+  </div>
+  <div class="gap-3"></div>
+  <div class="grid3">
+    <div class="tile"><span class="t-sun">${icn("clock",18,2.2)}</span><span class="num">${42+S.todayCheckins}</span><span class="caption">check-ins</span></div>
+    <div class="tile"><span class="t-flame">${icn("flameFill",18)}</span><span class="num">${Math.max(S.streak,5)}</span><span class="caption">best streak</span></div>
+    <div class="tile"><span class="t-sprout">${icn("trendUp",18,2.4)}</span><span class="num">+${lastScan().v-S.history[0].v}</span><span class="caption">posture pts</span></div>
+  </div>
+  <div class="gap-3"></div>
+  <div class="card night">
+    <div class="callout"><span class="ico glassy">${icn("docf",22)}</span><div class="grow"><div class="headline">Doctor-ready report</div>
+    <p class="footnote">Your pain log, check-ins and scans on one page, so your consultation runs on data, not memory.</p></div></div>
+    <div class="gap-4"></div>
+    <div class="row"><button class="btn sun sm" onclick="genReport()">Generate</button><button class="btn glass sm" onclick="go('report')">See example</button></div>
+  </div>`}
+</div>`;};
+function genReport(){
+  if(S.user==="new"){ sheet(`<div class="hero-ico ico sun">${icn("docf",28)}</div><div class="title">Not enough data yet</div><p>A useful report needs at least 7 days of check-ins. You have ${S.todayCheckins}. We’ll let you know when it’s ready.</p><button class="btn primary" onclick="closeSheet()">OK</button>`); return; }
+  sheet(`<div class="center"><div class="spin"></div><div class="title">Compiling your report</div><p>8 weeks of check-ins, pain logs and posture scans</p></div>`);
+  island("dot","Compiling report",1300);
+  setTimeout(()=>{
+    if(S.offline){ sheet(`<div class="hero-ico ico alert">${icn("wifiOff",28)}</div><div class="title">Report couldn’t be made</div>
+      <p>You’re offline, and the report is built from your synced history. Reconnect, then try again.</p><button class="btn primary" onclick="genReport()">Try again</button><button class="btn ghost" onclick="closeSheet()">Cancel</button>`); return; }
+    closeSheet(); go("report"); toast("Report ready",{icon:"check"});
+  },1300);
+}
+V.report=()=>{ const last=lastScan()||{d:short(new Date()),v:posture()}, first=S.history[0]||last; return `<div class="pad">
+  ${head("Doctor report",{back:"progress",help:"A one-page summary a clinician can read in under a minute. Share it as a PDF, or let the clinic pull it when you book through Poshture."})}
+  <div class="doc">
+    <div class="spread"><div><span class="wordmark">Poshture</span><div class="caption">Posture &amp; pain summary</div></div>
+      <div class="caption">Gene Lim<br>Ref PR-2318 · ${fmtDate(new Date())}</div></div>
+    <div class="rule"></div>
+    <h4>Summary · ${first.d} – ${short(new Date())}</h4>
+    <p class="footnote">Neck pain fell <b class="t-sprout">38%</b> (avg 3.9 → 2.4 of 10). Posture rose <b class="t-sprout">${first.v} → ${last.v}</b> over ${S.history.length} scans. Red-flag screen: no emergency signs. ${42+S.todayCheckins} hourly check-ins; best streak ${Math.max(S.streak,5)} days.</p>
+    <h4>Pain trend (0–10)</h4>
+    <svg viewBox="0 0 300 100" width="100%" role="img" aria-label="Pain trend falling across eight weeks">
+      ${[0,1,2].map(i=>`<line x1="6" x2="294" y1="${14+i*34}" y2="${14+i*34}" stroke="#EFE7DB" stroke-width="1.3"/>`).join("")}
+      <path d="M10 50 C40 54 50 58 58 58 S95 55 106 56 S145 66 158 68 S200 71 210 72 S270 77 290 78" fill="none" stroke="#1C2140" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+    <h4>Pain by area</h4>
+    <table>${S.pains.map((p,i)=>`<tr><td>${p}</td><td class="caption">avg ${[3.1,2.6,2.2,1.8,1.5,1.2][i]||1.5} / 10</td><td class="t-sprout">${i<2?"Improving":"Stable"}</td></tr>`).join("")}</table>
+    <h4>Posture scans</h4>
+    <table>${S.history.map((h,i)=>`<tr><td>${h.d}</td><td class="caption">${i?(h.v-S.history[i-1].v>=0?"+":"")+(h.v-S.history[i-1].v):"baseline"}</td><td>${h.v} / 100</td></tr>`).join("")}</table>
+    <div class="caption foot">Generated by Poshture from self-reported data. Not a medical diagnosis; for discussion with a qualified clinician.</div>
+  </div>
+</div>
+<div class="ctabar"><div class="row"><button class="btn secondary" onclick="S.urgent=false;go('doctors')">Book a visit</button><button class="btn primary" onclick="toast('PDF saved to Files',{icon:'share'})">${icn("share",20)} Share PDF</button></div></div>`;};
+
+/* ---- desk set-up ---- */
+V.setup=()=>{ const gate=cameraGate(true); return `<div class="pad">
+  ${head("Desk set-up scan",{back:"scan",help:"Photograph your desk from the side. We rate the chair, screen and desk against your posture and pain areas."})}
+  ${gate||`<div class="viewport short"><div class="scanline"></div><div class="vp-msg"><div class="headline">Frame your whole desk</div><div class="footnote">Side-on, with the chair in view</div></div></div>`}
+  <button class="btn primary" id="setBtn" ${gate?"disabled":""} onclick="captureSetup()">${icn("camera",22)} Capture set-up</button>
+  <div class="section-h"><span class="serif">What we check</span><span class="caption">about 10 seconds</span></div>
+  <div class="group">${[["chair","Chair height and lumbar support","sun"],["monitor","Screen height and distance","sky"],["book","Desk and keyboard height","sprout"]].map(([i,t,c])=>`<div class="item"><span class="ico ${c}">${icn(i,22)}</span><span class="grow body">${t}</span></div>`).join("")}</div>
+</div>`;};
+function captureSetup(){ const b=$("setBtn"); b.disabled=true; b.innerHTML=`<span class="spin-sm"></span> Scoring your set-up…`; island("dot","Scoring set-up",900); setTimeout(()=>go("setupScore"),900); }
+V.setupScore=()=>`<div class="pad">
+  ${head("Set-up score",{back:"setup",help:"Each part is scored against ergonomic guidelines, weighted by your pain areas. Free fixes come before shopping."})}
+  <div class="card">${dial(72)}<div class="center gap-top">${bandPill(72)}</div>
+    <div class="divider"></div>${bar("Chair",45)}${bar("Screen",85)}${bar("Desk",75)}</div>
+  <div class="gap-3"></div>
+  <div class="card tint-sun"><div class="callout"><span class="t-sun">${icn("bulb",24)}</span><div class="grow"><div class="headline">Free fix first</div>
+    <p class="footnote">Your chair is the weak spot: it sits low for your neck. Raise it, then lift your screen on two thick books before buying anything.</p></div></div></div>
+</div>
+<div class="ctabar"><button class="btn primary" onclick="go('reco')">See all fixes</button></div>`;
+V.reco=()=>`<div class="pad">
+  ${head("Fixes for your desk",{back:"setupScore",help:"Ordered for you: free fixes first, because your chair scored lowest and your neck is a saved pain area. Prices are indicative."})}
+  <div class="section-h"><span class="serif">Free · do these today</span><span class="caption">4 min total</span></div>
+  <div class="group">
+    ${fix("chair","Raise your chair","Elbows at 90° when typing · 1 min")}
+    ${fix("book","Books under your monitor","Top of screen at eye level · 2 min")}
+    ${fix("roll","Rolled towel behind lower back","Instant lumbar support · 1 min")}
+  </div>
+  <div class="section-h"><span class="serif">Upgrade later</span></div>
+  <div class="group">
+    ${rec("chair","ErgoLift seat cushion","S$29 · quickest neck relief")}
+    ${rec("monitor","Monitor riser","S$29 · a tidier books-under-monitor")}
+    ${rec("chair","Atlas task chair","S$219 · adjustable lumbar")}
+  </div>
+</div>`;
+const fix=(ic,n,s)=>{ const k="fix_"+n; const d=S[k];
+  return `<button class="item ${d?"is-done":""}" onclick="S['${k}']=!S['${k}'];render();${d?"":`toast('Nice. Re-scan your desk later to see the score move',{icon:'check'})`}" aria-pressed="${!!d}">
+  <span class="ico sprout">${icn(ic,22)}</span><span class="grow"><span class="strong">${n}</span><span class="footnote">${s}</span></span><span class="tick">${d?icn("check",16,3):""}</span></button>`; };
+const rec=(ic,n,s)=>`<button class="item" onclick="toast('Shop links open outside this prototype')"><span class="ico">${icn(ic,22)}</span><span class="grow"><span class="strong">${n}</span><span class="footnote">${s}</span></span><span class="chev">${icn("chev",18)}</span></button>`;
+
+/* ---- learn ---- */
+const STRETCHES=[["s1","Chin tucks","Neck · 2 min","chinTuck"],["s2","Side plank","Back · 3 min","sidePlank"],["s3","Cat–cow","Back · 2 min","catCow"]];
+const LESSONS=[["l1","Sitting posture","video","4:12"],["l2","Choosing a chair","picture","Guide"],["l3","When to stand","video","2:30"]];
+V.learn=()=>{ const seg=S.learnSeg; return `<div class="pad">
+  ${head("Learn",{large:true,help:"Stretches and short lessons, picked from your pain areas. Completing them earns points and protects today’s streak."})}
+  <div class="seg" role="tablist">
+    <button role="tab" aria-selected="${seg==="stretch"}" onclick="S.learnSeg='stretch';render()">Stretches</button>
+    <button role="tab" aria-selected="${seg==="lessons"}" onclick="S.learnSeg='lessons';render()">Lessons</button>
+  </div>
+  ${seg==="stretch"? learnStretch() : learnLessons()}
+</div>`;};
+/* the streak target sits in the list's own header, the same ring header as Home's plan */
+function streakHead(cat){
+  const n=cat==="sprout"?Object.keys(S.stretchesDone).length:Object.keys(S.lessonsDone).length, total=cat==="sprout"?3:1, k=Math.min(n,total);
+  return ringHead(S.todayDone?total:k,total,S.todayDone?"Streak secured":`Keep your ${S.streak}-day streak`,
+    S.todayDone?`${S.streak} days and counting. See you tomorrow.`:cat==="sprout"?"Finish all three today · +10 pts each":"Complete one lesson today · +15 pts");
+}
+function learnStretch(){
+  const next=STRETCHES.findIndex(([id])=>!S.stretchesDone[id]);
+  return streakHead("sprout")+
+  `<div class="group">${STRETCHES.map(([id,nm,s],i)=>{ const d=S.stretchesDone[id];
+    return `<div class="item ${d?"is-done":""}">${thumb(id,null,null,d)}
+      <span class="grow"><span class="strong">${nm}</span><span class="footnote">${s}</span></span>
+      <button class="pillbtn ${d?"on":i===next?"":"soft"}" onclick="doStretch('${id}')" ${d?'aria-disabled="true"':""}>${d?icn("check",16,2.8)+" Done":icn("play",14)+" Start"}</button></div>`;}).join("")}</div>
+  <div class="listcap caption center">Picked for your ${S.pains.slice(0,2).join(" & ").toLowerCase()}</div>`;
+}
+function doStretch(id){
+  if(S.stretchesDone[id]){ toast("Already done today"); return; }
+  S.stretchesDone[id]=true; S.points+=10;
+  if(Object.keys(S.stretchesDone).length>=3 && !S.todayDone){ S.todayDone=true; S.streak++; toast(`All three done. Streak is now ${S.streak}`,{icon:"flameFill"}); }
+  else toast("Nice. +10 pts",{icon:"check"});
+  render();
+}
+function learnLessons(){
+  return streakHead("sky")+`<div class="group">`+
+  LESSONS.map(([id,n,kind,dur])=>{ const d=S.lessonsDone[id];
+    return `<button class="item" onclick="S.lesson='${id}';go('module')">${thumb(id,kind,kind==="video"?dur:null,d)}
+      <span class="grow"><span class="strong">${n}</span><span class="footnote">${kind==="video"?"Video · "+dur:"Illustrated guide · 3 min"}</span>${d?`<span class="caption t-sprout strong">Completed</span>`:""}</span>
+      <span class="chev">${icn("chev",18)}</span></button>`;}).join("")+`</div><div class="listcap caption center">Short and practical, under 5 minutes each</div>`;
+}
+V.module=()=>{ const L=LESSONS.find(x=>x[0]===S.lesson)||LESSONS[0]; const [id,name,kind,dur]=L;
+  const scene=id==="l1"?sceneSit():id==="l2"?sceneChair():sceneStand();
+  const media=kind==="video"
+   ? `<div class="media"><div class="stage"><svg width="100%" viewBox="0 0 116 74" aria-label="${name} lesson video">${scene}</svg>
+       <button class="play" onclick="toast('Playing: ${name}',{icon:'play'})" aria-label="Play video">${icn("play",30)}</button></div>
+       <div class="bar-row"><span class="caption num">0:56</span><div class="scrub"><i></i></div><span class="caption num">${dur}</span></div></div>`
+   : `<div class="media"><svg width="100%" viewBox="0 0 116 74" aria-label="${name} illustrated guide">${scene}</svg>
+       <div class="cap caption">Figure 1 · curved lumbar support and adjustable seat height.</div></div>`;
+  const points = id==="l1"? ["Ears over shoulders, shoulders over hips.","Top of the screen at eye height.","Every 60 minutes, stand for two."]
+    : id==="l2"? ["Support for your lower back’s natural curve.","Feet flat on the floor, knees at hip height.","No good chair? A rolled towel works."]
+    : ["Discomfort builds after about two hours of sitting.","Sit 50 minutes, then move for 2.","Stand before the ache starts, not after."];
+  return `<div class="pad">
+  ${head(name,{back:"learn",help:"Watch or read, then mark complete to earn points and keep today’s streak.",sub:kind==="video"?"Video lesson · +15 pts":"Illustrated guide · +15 pts"})}
+  ${media}
+  <div class="section-h"><span class="serif">Key points</span></div>
+  <div class="group">${points.map((p,i)=>`<div class="item noicon"><span class="keynum">${i+1}</span><span class="grow body">${p}</span></div>`).join("")}</div>
+</div>
+<div class="ctabar"><button class="btn ${S.lessonsDone[id]?"secondary":"primary"}" onclick="finishLesson('${id}')">${S.lessonsDone[id]?icn("checkCircle",20)+" Completed":"Mark as complete"}</button></div>`;};
+function finishLesson(id){
+  if(S.lessonsDone[id]){ toast("Already completed"); return; }
+  S.lessonsDone[id]=true; S.points+=15;
+  if(!S.todayDone){ S.todayDone=true; S.streak++; toast(`Lesson done. Streak is now ${S.streak}`,{icon:"flameFill"}); }
+  else toast("Lesson done · +15 pts",{icon:"check"});
+  render();
+}
+/* lesson illustrations — drawn in the app palette */
+function sceneSit(){ return `<rect width="116" height="74" fill="#FFF5EC"/><rect x="0" y="58" width="116" height="16" fill="#FFE3CC"/>
+  <line x1="30" y1="46" x2="92" y2="46" stroke="#1C2140" stroke-width="2.5"/><line x1="36" y1="46" x2="36" y2="60" stroke="#1C2140" stroke-width="2.5"/><line x1="86" y1="46" x2="86" y2="60" stroke="#1C2140" stroke-width="2.5"/>
+  <rect x="62" y="24" width="24" height="17" rx="2" fill="#fff" stroke="#1C2140" stroke-width="2"/><line x1="74" y1="41" x2="74" y2="46" stroke="#1C2140" stroke-width="2"/>
+  <circle cx="42" cy="22" r="6" fill="#FF9446"/><path d="M44 28 Q40 36 42 46" fill="none" stroke="#FF7A3D" stroke-width="5" stroke-linecap="round"/>
+  <path d="M43 33 L56 40" fill="none" stroke="#B4461B" stroke-width="3" stroke-linecap="round"/><path d="M42 46 L42 58 M42 46 L52 50 L52 58" fill="none" stroke="#B4461B" stroke-width="3" stroke-linecap="round"/>
+  <rect x="98" y="44" width="10" height="14" rx="2" fill="#DCF3E7"/><path d="M103 44 q-4 -7 0 -12 q4 5 0 12" fill="#2BB07A"/>`; }
+function sceneChair(){ return `<rect width="116" height="74" fill="#E1EBFB"/><circle cx="88" cy="20" r="12" fill="#FFF5EC"/>
+  <path d="M48 12 q14 -2 15 12 l1 22 q0 4 -4 4 l-10 0" fill="#fff" stroke="#1C2140" stroke-width="2.5"/><path d="M52 26 q7 0 9 4" fill="none" stroke="#2BB07A" stroke-width="2.5" stroke-linecap="round"/>
+  <rect x="40" y="48" width="26" height="7" rx="3.5" fill="#FF7A3D"/><line x1="53" y1="55" x2="53" y2="64" stroke="#1C2140" stroke-width="2.5"/>
+  <path d="M40 68 L53 63 L66 68 M46 66 L53 63 L60 66" fill="none" stroke="#1C2140" stroke-width="2.5" stroke-linecap="round"/><circle cx="40" cy="69" r="2.5" fill="#1C2140"/><circle cx="66" cy="69" r="2.5" fill="#1C2140"/>`; }
+function sceneStand(){ return `<rect width="116" height="74" fill="#DCF3E7"/><rect x="0" y="60" width="116" height="14" fill="#C4EBD6"/>
+  <circle cx="46" cy="17" r="6.5" fill="#FF9446"/><line x1="46" y1="24" x2="46" y2="45" stroke="#FF7A3D" stroke-width="5" stroke-linecap="round"/>
+  <path d="M46 30 L34 40 M46 30 L58 40" fill="none" stroke="#B4461B" stroke-width="3" stroke-linecap="round"/><path d="M46 45 L38 62 M46 45 L54 62" fill="none" stroke="#B4461B" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="88" cy="26" r="14" fill="#fff" stroke="#1C2140" stroke-width="2.2"/><line x1="88" y1="26" x2="88" y2="17" stroke="#1C2140" stroke-width="2.2" stroke-linecap="round"/><line x1="88" y1="26" x2="94" y2="29" stroke="#1C2140" stroke-width="2.2" stroke-linecap="round"/>`; }
+const STRETCH_BG=`<rect width="116" height="74" fill="#DCF3E7"/><rect x="0" y="60" width="116" height="14" fill="#C4EBD6"/>`;
+const MAT=`<rect x="18" y="58" width="80" height="4" rx="2" fill="#2BB07A" opacity=".45"/>`;
+function sceneChinTuck(){ return STRETCH_BG+MAT+`<line x1="50" y1="26" x2="50" y2="44" stroke="#FF7A3D" stroke-width="6" stroke-linecap="round"/>
+  <path d="M50 31 L46 43 M50 44 L45 58 M50 44 L55 58" fill="none" stroke="#B4461B" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="60" cy="18" r="6.5" fill="none" stroke="#FF9446" stroke-width="1.6" stroke-dasharray="3 2.4"/><circle cx="50" cy="18" r="7" fill="#FF9446"/>
+  <path d="M78 10 L64 10 M68 6 L64 10 L68 14" fill="none" stroke="#17774F" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`; }
+function sceneSidePlank(){ return STRETCH_BG+MAT+`<line x1="92" y1="57" x2="44" y2="40" stroke="#FF7A3D" stroke-width="6" stroke-linecap="round"/>
+  <path d="M44 41 L44 57 L56 57" fill="none" stroke="#B4461B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M60 46 L58 37 L68 41" fill="none" stroke="#B4461B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="35" cy="36" r="7" fill="#FF9446"/>`; }
+function sceneCatCow(){ return STRETCH_BG+MAT+`<path d="M38 42 Q60 54 82 42" fill="none" stroke="#FF9446" stroke-width="2" stroke-dasharray="3 3" stroke-linecap="round"/>
+  <path d="M38 42 Q60 20 82 42" fill="none" stroke="#FF7A3D" stroke-width="6" stroke-linecap="round"/>
+  <path d="M38 43 L37 58 M82 43 L82 58 L96 58" fill="none" stroke="#B4461B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="30" cy="49" r="7" fill="#FF9446"/>`; }
+function thumb(id,kind,dur,done){
+  const scene={l1:sceneSit,l2:sceneChair,l3:sceneStand,s1:sceneChinTuck,s2:sceneSidePlank,s3:sceneCatCow}[id]();
+  const badge=kind==="video"? `<circle cx="58" cy="37" r="13" fill="rgba(255,255,255,.95)"/><path d="M54 30.5 L65 37 L54 43.5 Z" fill="#1C2140"/>`:"";
+  const durChip=dur? `<rect x="70" y="50" width="42" height="20" rx="10" fill="rgba(28,33,64,.88)"/><text x="91" y="64.5" text-anchor="middle" font-size="14" font-weight="700" fill="#fff" font-family="Instrument Sans">${dur}</text>`:"";
+  const tick=done? `<circle cx="103" cy="13" r="9" fill="#2BB07A"/><path d="M99 13 l3 3 5 -6" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round"/>`:"";
+  return `<svg class="thumb" width="100" height="64" viewBox="0 0 116 74" aria-hidden="true">${scene}${badge}${durChip}${tick}</svg>`;
+}
+
+/* ---- friends ---- */
+const PEOPLE=[["AM","Amelia","Streak 12 · Social Sciences","rose"],["JT","Jermain","Streak 5 · Computing","sky"],["KE","Kena","Streak 3 · Economics","sprout"]];
+const POSTS=[["a","AM","Amelia","2h ago",["6 check-ins","3 stretches","12-day streak"],"rose"],["b","JT","Jermain","4h ago",["4 check-ins","1 lesson","5-day streak"],"sky"]];
+V.friends=()=>{ const seg=S.friendSeg; return `<div class="pad">
+  ${offlineBanner()}
+  ${head("Friends",{large:true,help:"Like Strava for sitting less: your check-ins and stretches post here, and friends cheer you on."})}
+  <div class="seg" role="tablist">
+    <button role="tab" aria-selected="${seg==="feed"}" onclick="S.friendSeg='feed';render()">Activity</button>
+    <button role="tab" aria-selected="${seg==="people"}" onclick="S.friendSeg='people';render()">Find people</button>
+  </div>
+  ${seg==="feed"? feedView() : peopleView()}
+</div>`;};
+function dayStats(){
+  const st=Object.keys(S.stretchesDone).length, le=Object.keys(S.lessonsDone).length;
+  const bits=[`${S.todayCheckins} check-in${S.todayCheckins===1?"":"s"}`];
+  if(st) bits.push(`${st} stretch${st===1?"":"es"}`); if(le) bits.push(`${le} lesson${le===1?"":"s"}`);
+  bits.push(`${S.streak}-day streak`); return bits;
+}
+const streakOf=bits=>bits.find(b=>/streak/.test(b));
+const actChips=bits=>bits.filter(b=>!/streak/.test(b)).map(statChip).join("");
+const statChip=b=>`<span class="chip ${/check-in/.test(b)?"sun":/stretch/.test(b)?"sprout":/lesson/.test(b)?"sky":""}">${/streak/.test(b)?`<span class="t-flame">${icn("flameFill",14)}</span>`:""}${b}</span>`;
+function feedView(){
+  const st=ready("feed");
+  if(st==="load") return skelRows(3);
+  if(st==="err") return errorState("feed","your friends’ activity");
+  const visible=POSTS.filter(p=>S.follows[p[2]]);
+  /* your own day sits on top: share it, or see how it landed */
+  const mine=S.myPost?`<div class="card post mine"><div class="who">${mmAva(posture(),"me","You")}<div class="grow"><span class="strong">You</span><div class="caption">just now · ${S.myPost.k} cheer${S.myPost.k===1?"":"s"}</div></div>
+    <button class="pillbtn soft" onclick="postMyDay()">Update</button></div><div class="what">${actChips(S.myPost.bits)}</div></div>`
+   :`<div class="card tight composer"><div class="row">${mmAva(posture(),"me","You")}<div class="grow"><span class="strong">Share your day</span><div class="footnote">${dayStats().map(b=>`<span class="nowrap">${b}</span>`).join(" · ")}</div></div>
+    <button class="pillbtn" onclick="postMyDay()">Share</button></div></div>`;
+  const posts=visible.map(([id,init,name,when,bits,c])=>{ const on=S.kudosGiven[id];
+    return `<div class="card post"><div class="who">${mmAva(MM_OF[name],c,name)}<div class="grow"><span class="strong">${name}</span><div class="caption"><span class="t-flame">${icn("flameFill",13)}</span> ${streakOf(bits)} · ${when}</div></div>
+      <button class="pillbtn rose ${on?"on":""}" onclick="kudos('${id}')" aria-pressed="${!!on}">${icn("thumb",16)} ${on?"Cheered":"Cheer"} ${S.kudos[id]+(on?1:0)}</button></div>
+      <div class="what">${actChips(bits)}</div></div>`;}).join("");
+  const empty=!visible.length&&!S.myPost? emptyState(mascot(110,62,[]),"Mini Me’s a bit lonely","Follow classmates to see their check-ins and cheer them on.",`<button class="btn primary sm" onclick="S.friendSeg='people';render()">Find classmates</button>`):"";
+  return mine+`<div class="listcap caption">${visible.length?"Today from people you follow":""}</div>`+posts+empty;
+}
+function kudos(id){ S.kudosGiven[id]=!S.kudosGiven[id]; toast(S.kudosGiven[id]?"Cheer sent":"Cheer removed",{icon:"thumb"}); render(); }
+function postMyDay(){
+  if(S.offline){ toast("You’re offline. Share when you reconnect",{icon:"wifiOff"}); return; }
+  const first=!S.myPost; S.myPost={bits:dayStats(),k:S.myPost?S.myPost.k:0};
+  toast(first?"Shared with your friends":"Post updated",{icon:"check"}); render();
+  if(first&&!S.kudosNotified){ S.kudosNotified=true; setTimeout(()=>{ if(S.myPost){ S.myPost.k++; toast("Amelia cheered your day",{icon:"thumb"}); if(S.screen==="friends") render(); } },2600); }
+}
+function peopleView(){
+  return `<div class="searchwrap">${icn("search",18)}<input class="field" placeholder="Search classmates by name" aria-label="Search classmates" value="${S.peopleQ||""}" oninput="filterPeople(this)"></div>
+  <div class="gap-4"></div><div id="peopleList">${peopleList()}</div>`;
+}
+function peopleList(){
+  const q=(S.peopleQ||"").toLowerCase(); const list=PEOPLE.filter(([,n])=>n.toLowerCase().includes(q));
+  return list.length? `<div class="group">${list.map(([i,n,s,c])=>{ const on=S.follows[n];
+    return `<div class="item">${mmAva(MM_OF[n],c,n)}<span class="grow"><span class="strong">${n}</span><span class="footnote">${s}</span></span>
+    <button class="pillbtn ${on?"on":""}" aria-pressed="${!!on}" onclick="follow('${n}')">${on?icn("check",16,2.8)+" Following":"Follow"}</button></div>`;}).join("")}</div>`
+   : emptyState("search",`No one called “${S.peopleQ}”`,"Check the spelling, or search by first name only.");
+}
+function filterPeople(el){ S.peopleQ=el.value; $("peopleList").innerHTML=peopleList(); }
+function follow(n){ S.follows[n]=!S.follows[n]; toast(S.follows[n]?`Following ${n}`:`Unfollowed ${n}`,{icon:S.follows[n]?"userPlus":undefined}); $("peopleList").innerHTML=peopleList(); }
+
+/* ---------------- demo + utilities ---------------- */
+function toggleOffline(){
+  S.offline=!S.offline; $("offBtn").setAttribute("aria-pressed",S.offline); $("offBtn").textContent=S.offline?"Go online":"Go offline";
+  if(S.offline){ S.loaded={}; island("wifiOff","No connection",1400); }
+  else { S.failed={}; S.log.forEach(e=>e.q=false); island("checkCircle","Back online · synced",1400); }
+  render();
+}
+function demoScanFail(){ S.scanFailArmed=true; toast("Next scan capture will fail (demo)"); }
+function resetApp(){ NAV=[]; S=seedReturning(); closeSheet(); $("offBtn").setAttribute("aria-pressed","false"); $("offBtn").textContent="Go offline"; render("tab"); }
+function exportScreen(){
+  html2canvas($("phone"),{scale:2,backgroundColor:null,useCORS:true,onclone:doc=>{
+    const st=doc.createElement("style"); st.textContent="*{animation:none !important;transition:none !important}"; doc.head.appendChild(st);
+    const t=doc.getElementById("toast"); if(t) t.style.display="none";
+  }}).then(c=>{ const a=document.createElement("a"); a.download=`poshture_${S.screen}.png`; a.href=c.toDataURL("image/png"); a.click(); toast("Saved poshture_"+S.screen+".png"); })
+  .catch(()=>toast("Export failed. Use a browser screenshot instead"));
+}
+$("notifIcon").innerHTML=mascot(40,92,[],{anim:false});
+$("evo").innerHTML=[[38,"Slouchy"],[56,"Waking up"],[72,"Upright"],[92,"Blooming"]].map(([s,l])=>`<div>${mascot(70,s,[],{anim:false})}${l}</div>`).join("");
+(function tick(){ const d=new Date(); let h=d.getHours()%12||12; $("clock").textContent=`${h}:${String(d.getMinutes()).padStart(2,"0")}`; setTimeout(tick,30000); })();
+render();
+</script>
+</body>
+</html>
